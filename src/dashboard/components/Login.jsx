@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase, isConfigValid } from '../../lib/supabase';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -10,6 +10,12 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+
+        if (!isConfigValid) {
+            setError('Error de configuración: Las variables de entorno de Supabase no se detectaron en Vercel. Por favor, revisa los ajustes del proyecto.');
+            return;
+        }
+
         setIsSubmitting(true);
 
         const { data, error } = await supabase.auth.signInWithPassword({
