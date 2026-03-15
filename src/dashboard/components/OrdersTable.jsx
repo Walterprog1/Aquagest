@@ -1,29 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
 
 const OrdersTable = () => {
     const [activeTab, setActiveTab] = useState('Pendientes');
     const [orders, setOrders] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    React.useEffect(() => {
-        const cargarPedidos = () => {
-            const guardados = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
-            setOrders(guardados);
-        };
-
+    useEffect(() => {
         cargarPedidos();
+    }, [activeTab]);
 
-        // Intervalo para capturar cambios de los modales sin Redux/Context complejo
-        const interval = setInterval(cargarPedidos, 2000);
-        return () => clearInterval(interval);
-    }, []);
+    const cargarPedidos = async () => {
+        setIsLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('pedidos')
+                .select(`
+                    *,
+                    clientes (
+                        nombre,
+                        telefono,
+                        direccion
+                    ),
+                    detalles_pedido (
+                        producto,
+                        cantidad
+                    )
+                `)
+                .eq('estado', activeTab === 'Pendientes' ? 'Pendiente' : (activeTab === 'Entregados' ? 'Entregado' : 'Anulado'))
+                .order('created_at', { ascending: false });
 
-    const filteredOrders = orders.filter(order => {
-        const status = order.status || 'Pendiente';
-        if (activeTab === 'Pendientes') return status === 'Pendiente';
-        if (activeTab === 'Entregados') return status === 'Entregado';
-        if (activeTab === 'Anulados') return status === 'Anulado';
-        return false;
-    });
+            if (error) throw error;
+            setOrders(data || []);
+        } catch (error) {
+            console.error("Error cargando pedidos:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
 
     return (
         <div className="orders-area">
@@ -50,21 +65,27 @@ const OrdersTable = () => {
                     </tr>
                 </thead>
                 <tbody>
-                    {filteredOrders.length > 0 ? filteredOrders.map(order => (
+                    {isLoading ? (
+                        <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>Cargando pedidos...</td></tr>
+                    ) : orders.length > 0 ? orders.map(order => (
                         <tr key={order.id}>
-                            <td>{order.id}</td>
-                            <td style={{ fontSize: '0.75rem' }}>{order.updated}</td>
-                            <td style={{ fontSize: '0.75rem' }}>{order.created}</td>
-                            <td><span style={{ backgroundColor: '#10b981', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>{order.origin}</span></td>
-                            <td style={{ fontSize: '0.75rem' }}>{order.responsible}</td>
-                            <td>{order.client}</td>
-                            <td></td>
-                            <td>{order.phone}</td>
-                            <td style={{ fontSize: '0.7rem', maxWidth: '150px' }}>{order.address}</td>
-                            <td></td>
-                            <td><input type="checkbox" /></td>
+                            <td style={{ fontSize: '0.7rem' }}>{order.id.split('-')[0]}</td>
+                            <td style={{ fontSize: '0.75rem' }}>{new Date(order.created_at).toLocaleString()}</td>
+                            <td style={{ fontSize: '0.75rem' }}>{new Date(order.fecha).toLocaleDateString()}</td>
+                            <td><span style={{ backgroundColor: '#10b981', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>Mostrador</span></td>
+                            <td style={{ fontSize: '0.75rem' }}>Administrador</td>
+                            <td>{order.clientes?.nombre || 'Consumidor Final'}</td>
+                            <td>${order.total}</td>
+                            <td>{order.clientes?.telefono || '-'}</td>
+                            <td style={{ fontSize: '0.7rem', maxWidth: '150px' }}>{order.clientes?.direccion || '-'}</td>
+                            <td style={{ fontSize: '0.7rem' }}>{order.notas}</td>
+                            <td>
+                                {order.detalles_pedido?.map((d, i) => (
+                                    <div key={i} style={{ fontSize: '0.7rem' }}>{d.cantidad}x {d.producto}</div>
+                                ))}
+                            </td>
                         </tr>
-                    )) : <tr><td colSpan="11" style={{ textAlign: 'center' }}>No hay pedidos {activeTab.toLowerCase()}</td></tr>}
+                    )) : <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>No hay pedidos {activeTab.toLowerCase()}</td></tr>}
                 </tbody>
             </table>
         </div>

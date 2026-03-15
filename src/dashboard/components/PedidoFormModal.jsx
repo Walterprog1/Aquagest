@@ -1,15 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
+import { supabase } from '../../lib/supabase';
 
 const PedidoFormModal = ({ isOpen, onClose }) => {
     const [clientesGuardados, setClientesGuardados] = useState([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
-            const guardados = JSON.parse(localStorage.getItem('aquagest_clientes') || '[]');
-            setClientesGuardados(guardados);
+            cargarClientes();
         }
     }, [isOpen]);
+
+    const cargarClientes = async () => {
+        const { data, error } = await supabase
+            .from('clientes')
+            .select('*')
+            .order('nombre', { ascending: true });
+        
+        if (!error) {
+            setClientesGuardados(data || []);
+        }
+    };
 
     const [formData, setFormData] = useState({
         cliente: '',
@@ -24,14 +36,13 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
     const handleChange = (e) => {
         const { name, value } = e.target;
 
-        // Si cambia el cliente, intentamos recuperar su precio especial si existe
         if (name === 'cliente' && value) {
             const clienteSeleccionado = clientesGuardados.find(c => c.id === value);
-            if (clienteSeleccionado && clienteSeleccionado.precioEspecialBidon20L) {
+            if (clienteSeleccionado && clienteSeleccionado.precio_especial) {
                 setFormData(prev => ({
                     ...prev,
                     [name]: value,
-                    precioUnitario: parseFloat(clienteSeleccionado.precioEspecialBidon20L)
+                    precioUnitario: parseFloat(clienteSeleccionado.precio_especial)
                 }));
                 return;
             }
@@ -44,50 +55,62 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
         return formData.envasesEntregados * formData.precioUnitario;
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setIsSubmitting(true);
 
-        const clienteData = clientesGuardados.find(c => c.id === formData.cliente);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("No autenticado");
 
-        const nuevoPedido = {
-            id: `PED-${Math.floor(Math.random() * 100000).toString().padStart(5, '0')}`,
-            updated: new Date().toLocaleString(),
-            created: new Date().toLocaleString(),
-            origin: "Mostrador", // Por defecto si se crea desde este modal
-            responsible: "Administrador", // Temporal hasta tener login
-            client: clienteData ? `${clienteData.nombre}` : 'Consumidor Final',
-            phone: clienteData ? clienteData.telefono : '-',
-            address: clienteData ? clienteData.direccion : 'Retiro en local',
-            status: "Pendiente",
-            items: [
-                {
-                    nombre: "Bidón 20L",
+            // 1. Insertar el Pedido
+            const { data: pedido, error: errorPedido } = await supabase
+                .from('pedidos')
+                .insert([{
+                    cliente_id: formData.cliente || null,
+                    fecha: formData.fecha,
+                    total: calcularTotal(),
+                    medio_pago: formData.medioPago,
+                    estado: 'Entregado', // Si se registra desde mostrador, se asume entregado
+                    notas: formData.notas,
+                    user_id: user.id
+                }])
+                .select()
+                .single();
+
+            if (errorPedido) throw errorPedido;
+
+            // 2. Insertar el detalle
+            const { error: errorDetalle } = await supabase
+                .from('detalles_pedido')
+                .insert([{
+                    pedido_id: pedido.id,
+                    producto: 'Bidón 20L',
                     cantidad: formData.envasesEntregados,
-                    precio: formData.precioUnitario
-                }
-            ],
-            total: calcularTotal(),
-            medioPago: formData.medioPago,
-            rawFormData: formData // Guardamos todo por las dudas
-        };
+                    precio_unitario: formData.precioUnitario
+                }]);
 
-        const pedidosActuales = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
-        pedidosActuales.push(nuevoPedido);
-        localStorage.setItem('aquagest_pedidos', JSON.stringify(pedidosActuales));
+            if (errorDetalle) throw errorDetalle;
 
-        alert('¡Venta/Pedido registrado con éxito!');
+            alert('¡Venta registrada con éxito en la nube!');
+            
+            setFormData({
+                cliente: '',
+                fecha: new Date().toISOString().split('T')[0],
+                envasesEntregados: 0,
+                envasesRecibidos: 0,
+                precioUnitario: 2500,
+                medioPago: 'efectivo',
+                notas: ''
+            });
 
-        setFormData({
-            cliente: '',
-            fecha: new Date().toISOString().split('T')[0],
-            envasesEntregados: 0,
-            envasesRecibidos: 0,
-            precioUnitario: 2500,
-            medioPago: 'efectivo',
-            notas: ''
-        });
-
-        onClose();
+            onClose();
+        } catch (error) {
+            console.error("Error al registrar pedido:", error);
+            alert("No se pudo registrar la venta: " + error.message);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const inputStyle = {

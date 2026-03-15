@@ -4,23 +4,26 @@ import { supabase } from '../../lib/supabase';
 const MigrationTool = ({ user }) => {
     const [hasData, setHasData] = useState(false);
     const [isMigrating, setIsMigrating] = useState(false);
-    const [stats, setStats] = useState({ clientes: 0, vehiculos: 0, zonas: 0 });
+    const [stats, setStats] = useState({ clientes: 0, vehiculos: 0, zonas: 0, pedidos: 0 });
 
     useEffect(() => {
         const clientesStr = localStorage.getItem('aquagest_clientes');
         const vehiculosStr = localStorage.getItem('aquagest_vehiculos');
         const zonasStr = localStorage.getItem('aquagest_zonas');
+        const pedidosStr = localStorage.getItem('aquagest_pedidos');
 
         const clientes = JSON.parse(clientesStr || '[]');
         const vehiculos = JSON.parse(vehiculosStr || '[]');
         const zonas = JSON.parse(zonasStr || '[]');
+        const pedidos = JSON.parse(pedidosStr || '[]');
 
-        if (clientes.length > 0 || vehiculos.length > 0 || zonas.length > 0) {
+        if (clientes.length > 0 || vehiculos.length > 0 || zonas.length > 0 || pedidos.length > 0) {
             setHasData(true);
             setStats({
                 clientes: clientes.length,
                 vehiculos: vehiculos.length,
-                zonas: zonas.length
+                zonas: zonas.length,
+                pedidos: pedidos.length
             });
         }
     }, []);
@@ -81,13 +84,60 @@ const MigrationTool = ({ user }) => {
                 if (error) throw error;
             }
 
-            // Limpiar localStorage (Backup por si acaso con prefijo distinto o simplemente borrar)
+            // 4. Pedidos
+            const pedidos = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
+            if (pedidos.length > 0) {
+                for (const p of pedidos) {
+                    // Intentamos buscar el cliente por nombre para mantener el vínculo si es posible
+                    let clienteId = null;
+                    if (p.client) {
+                        const { data: dbClient } = await supabase
+                            .from('clientes')
+                            .select('id')
+                            .ilike('nombre', p.client)
+                            .maybeSingle();
+                        if (dbClient) clienteId = dbClient.id;
+                    }
+
+                    const { data: newPedido, error: ep } = await supabase
+                        .from('pedidos')
+                        .insert([{
+                            cliente_id: clienteId,
+                            fecha: p.created ? new Date(p.created.split(',')[0].split('/').reverse().join('-')).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                            total: p.total || 0,
+                            medio_pago: p.medioPago || 'efectivo',
+                            estado: p.status || 'Entregado',
+                            notas: (p.notes || '') + (clienteId ? '' : ` [Cliente original: ${p.client}]`),
+                            user_id: user.id
+                        }])
+                        .select()
+                        .single();
+                    
+                    if (ep) throw ep;
+
+                    // Detalles del pedido
+                    if (p.items && p.items.length > 0) {
+                        const detalles = p.items.map(item => ({
+                            pedido_id: newPedido.id,
+                            producto: item.nombre || 'Bidón 20L',
+                            cantidad: item.cantidad || 0,
+                            precio_unitario: item.precio || 0
+                        }));
+                        const { error: ed } = await supabase.from('detalles_pedido').insert(detalles);
+                        if (ed) throw ed;
+                    }
+                }
+            }
+
+            // Limpiar localStorage
             localStorage.removeItem('aquagest_clientes');
             localStorage.removeItem('aquagest_vehiculos');
             localStorage.removeItem('aquagest_zonas');
+            localStorage.removeItem('aquagest_pedidos');
+            localStorage.removeItem('aquagest_stock'); // También stock si existiera
 
-            alert('¡Migración exitosa! Tus datos ya están en la nube.');
-            window.location.reload(); // Recargar para ver los cambios
+            alert('¡Migración exitosa! Todos tus datos (incluyendo pedidos) están en la nube.');
+            window.location.reload();
         } catch (error) {
             console.error("Error en migración:", error);
             alert("Ocurrió un error al migrar: " + error.message);
@@ -115,8 +165,8 @@ const MigrationTool = ({ user }) => {
                 <div>
                     <h4 style={{ margin: 0, color: '#9a3412', fontSize: '1rem' }}>¡Hemos detectado datos locales!</h4>
                     <p style={{ margin: '4px 0 0', color: '#c2410c', fontSize: '0.875rem' }}>
-                        Tienes {stats.clientes} clientes, {stats.vehiculos} vehículos y {stats.zonas} zonas guardadas en este navegador. 
-                        Súbelos a la nube para no perderlos y verlos en el celular.
+                        Tienes {stats.clientes} clientes, {stats.vehiculos} vehículos, {stats.zonas} zonas y {stats.pedidos} pedidos guardados localmente. 
+                        Súbelos a la nube para sincronizar toda tu gestión.
                     </p>
                 </div>
             </div>

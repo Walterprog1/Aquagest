@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import Modal from './Modal';
+import { supabase } from '../../lib/supabase';
 
 const StockFormModal = ({ isOpen, onClose }) => {
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         fecha: new Date().toISOString().split('T')[0],
         tipoEnvase: 'bidon_20l',
         cantidad: 0,
         movimiento: 'ingreso',
         motivo: '',
-        notas: ''
+        notes: ''
     });
 
     const handleChange = (e) => {
@@ -16,11 +18,36 @@ const StockFormModal = ({ isOpen, onClose }) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log('Guardando movimiento de stock:', formData);
-        alert('Movimiento de stock registrado con éxito (Simulación)');
-        onClose();
+        setIsSubmitting(true);
+
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("No autenticado");
+
+            const { error } = await supabase
+                .from('movimientos_stock')
+                .insert([{
+                    tipo_envase: formData.tipoEnvase,
+                    cantidad: parseInt(formData.cantidad),
+                    tipo_movimiento: formData.movimiento,
+                    motivo: formData.motivo,
+                    notas: formData.notas,
+                    user_id: user.id,
+                    created_at: new Date(formData.fecha).toISOString()
+                }]);
+
+            if (error) throw error;
+
+            alert('Movimiento de stock registrado con éxito en la nube.');
+            onClose();
+        } catch (error) {
+            console.error("Error al registrar stock:", error);
+            alert("No se pudo registrar el movimiento: " + error.message);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const inputStyle = {

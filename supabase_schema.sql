@@ -45,25 +45,58 @@ CREATE TABLE IF NOT EXISTS zonas_reparto (
     color TEXT DEFAULT '#3b82f6'
 );
 
--- POLÍTICAS DE SEGURIDAD (RLS) - Permite que los usuarios solo vean SUS propios datos
-ALTER TABLE clientes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE vehiculos ENABLE ROW LEVEL SECURITY;
-ALTER TABLE zonas_reparto ENABLE ROW LEVEL SECURITY;
+-- TABLA DE PEDIDOS
+CREATE TABLE IF NOT EXISTS pedidos (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    cliente_id UUID REFERENCES clientes(id) ON DELETE SET NULL,
+    fecha DATE DEFAULT CURRENT_DATE,
+    total NUMERIC DEFAULT 0,
+    medio_pago TEXT DEFAULT 'efectivo',
+    estado TEXT DEFAULT 'Pendiente',
+    notas TEXT
+);
 
--- Reglas para Clientes
-CREATE POLICY "Usuarios pueden ver sus propios clientes" ON clientes FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Usuarios pueden insertar sus propios clientes" ON clientes FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Usuarios pueden editar sus propios clientes" ON clientes FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Usuarios pueden borrar sus propios clientes" ON clientes FOR DELETE USING (auth.uid() = user_id);
+-- TABLA DE DETALLES DE PEDIDO
+CREATE TABLE IF NOT EXISTS detalles_pedido (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    pedido_id UUID REFERENCES pedidos(id) ON DELETE CASCADE NOT NULL,
+    producto TEXT NOT NULL,
+    cantidad INTEGER NOT NULL,
+    precio_unitario NUMERIC NOT NULL
+);
 
--- Reglas para Vehiculos
-CREATE POLICY "Usuarios pueden ver sus vehiculos" ON vehiculos FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Usuarios pueden insertar sus vehiculos" ON vehiculos FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Usuarios pueden editar sus vehiculos" ON vehiculos FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Usuarios pueden borrar sus vehiculos" ON vehiculos FOR DELETE USING (auth.uid() = user_id);
+-- TABLA DE MOVIMIENTOS DE STOCK
+CREATE TABLE IF NOT EXISTS movimientos_stock (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    tipo_envase TEXT NOT NULL,
+    cantidad INTEGER NOT NULL,
+    tipo_movimiento TEXT NOT NULL, -- 'ingreso' o 'egreso'
+    motivo TEXT,
+    notas TEXT
+);
 
--- Reglas para Zonas
-CREATE POLICY "Usuarios pueden ver sus zonas" ON zonas_reparto FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Usuarios pueden insertar sus zonas" ON zonas_reparto FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Usuarios pueden editar sus zonas" ON zonas_reparto FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Usuarios pueden borrar sus zonas" ON zonas_reparto FOR DELETE USING (auth.uid() = user_id);
+-- POLÍTICAS DE SEGURIDAD (RLS)
+ALTER TABLE pedidos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE detalles_pedido ENABLE ROW LEVEL SECURITY;
+ALTER TABLE movimientos_stock ENABLE ROW LEVEL SECURITY;
+
+-- Reglas para Pedidos
+CREATE POLICY "Usuarios pueden ver sus propios pedidos" ON pedidos FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Usuarios pueden insertar sus propios pedidos" ON pedidos FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Usuarios pueden editar sus propios pedidos" ON pedidos FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Usuarios pueden borrar sus propios pedidos" ON pedidos FOR DELETE USING (auth.uid() = user_id);
+
+-- Reglas para Detalles (Usamos el user_id del pedido relacionado)
+CREATE POLICY "Usuarios pueden ver detalles de sus pedidos" ON detalles_pedido FOR SELECT 
+USING (EXISTS (SELECT 1 FROM pedidos WHERE pedidos.id = detalles_pedido.pedido_id AND pedidos.user_id = auth.uid()));
+
+CREATE POLICY "Usuarios pueden insertar detalles en sus pedidos" ON detalles_pedido FOR INSERT 
+WITH CHECK (EXISTS (SELECT 1 FROM pedidos WHERE pedidos.id = detalles_pedido.pedido_id AND pedidos.user_id = auth.uid()));
+
+-- Reglas para Stock
+CREATE POLICY "Usuarios pueden ver sus movimientos de stock" ON movimientos_stock FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Usuarios pueden insertar sus movimientos de stock" ON movimientos_stock FOR INSERT WITH CHECK (auth.uid() = user_id);

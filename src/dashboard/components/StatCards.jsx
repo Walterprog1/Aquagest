@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
 
 const StatCard = ({ title, value, colorClass, linkLabel, onClick, onSecondaryClick, secondaryLinkLabel }) => (
     <div className={`stat-card ${colorClass}`} style={{ cursor: onClick ? 'pointer' : 'default' }}>
@@ -31,7 +32,7 @@ const StatCard = ({ title, value, colorClass, linkLabel, onClick, onSecondaryCli
 );
 
 const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuarios }) => {
-    const [stats, setStats] = React.useState({
+    const [stats, setStats] = useState({
         pedidosPendientes: 0,
         clientesRegistrados: 0,
         vehiculosRegistrados: 0,
@@ -40,32 +41,43 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
         ingresoDia: 0
     });
 
-    React.useEffect(() => {
-        const calcularStats = () => {
-            const hoy = new Date().toLocaleDateString();
-            const clientes = JSON.parse(localStorage.getItem('aquagest_clientes') || '[]');
-            const pedidos = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
-            const vehiculos = JSON.parse(localStorage.getItem('aquagest_vehiculos') || '[]');
-            const zonas = JSON.parse(localStorage.getItem('aquagest_zonas') || '[]');
-            const usuarios = JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]');
+    useEffect(() => {
+        const calcularStats = async () => {
+            try {
+                const hoy = new Date().toISOString().split('T')[0];
+                
+                // Realizamos consultas en paralelo para mejor rendimiento
+                const [
+                    { count: pendientes },
+                    { count: clientes },
+                    { count: vehiculos },
+                    { count: zonas },
+                    { data: pedidosHoy }
+                ] = await Promise.all([
+                    supabase.from('pedidos').select('*', { count: 'exact', head: true }).eq('estado', 'Pendiente'),
+                    supabase.from('clientes').select('*', { count: 'exact', head: true }),
+                    supabase.from('vehiculos').select('*', { count: 'exact', head: true }),
+                    supabase.from('zonas_reparto').select('*', { count: 'exact', head: true }),
+                    supabase.from('pedidos').select('total').eq('fecha', hoy).neq('estado', 'Anulado')
+                ]);
 
-            const pendientes = pedidos.filter(p => p.status === 'Pendiente').length;
-            const income = pedidos
-                .filter(p => p.created && p.created.startsWith(hoy.slice(0, 8)) && p.status !== 'Anulado')
-                .reduce((acc, curr) => acc + (curr.total || 0), 0);
+                const income = pedidosHoy?.reduce((acc, curr) => acc + (curr.total || 0), 0) || 0;
 
-            setStats({
-                pedidosPendientes: pendientes,
-                clientesRegistrados: clientes.length,
-                vehiculosRegistrados: vehiculos.length,
-                zonasRegistradas: zonas.length,
-                usuariosRegistrados: usuarios.length,
-                ingresoDia: income
-            });
+                setStats({
+                    pedidosPendientes: pendientes || 0,
+                    clientesRegistrados: clientes || 0,
+                    vehiculosRegistrados: vehiculos || 0,
+                    zonasRegistradas: zonas || 0,
+                    usuariosRegistrados: 1, // Por ahora el admin actual
+                    ingresoDia: income
+                });
+            } catch (error) {
+                console.error("Error al calcular estadísticas:", error);
+            }
         };
 
         calcularStats();
-        const interval = setInterval(calcularStats, 3000);
+        const interval = setInterval(calcularStats, 10000); // 10 segundos
         return () => clearInterval(interval);
     }, []);
 
