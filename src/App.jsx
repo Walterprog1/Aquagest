@@ -9,10 +9,16 @@ function App() {
 
   useEffect(() => {
     // 1. Obtener sesión inicial
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setSession(session);
+      })
+      .catch(err => {
+        console.error("Error al obtener sesión:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
 
     // 2. Escuchar cambios en la autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
