@@ -1,54 +1,45 @@
 import React, { useState, useEffect } from 'react'
 import Dashboard from './dashboard/Dashboard'
 import Login from './dashboard/components/Login'
+import { supabase } from './lib/supabase'
 
 function App() {
-  const [user, setUser] = useState(null);
+  const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Sembrado de usuario inicial si no hay ninguno
-    const usuariosExistentes = JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]');
-    if (usuariosExistentes.length === 0) {
-      const adminInicial = {
-        id: 'admin-1',
-        nombre: 'Administrador',
-        apellido: 'Sistema',
-        email: 'admin@aquagest.com',
-        password: 'admin123',
-        rol: 'administrador',
-        estado: 'activo',
-        fechaRegistro: new Date().toISOString()
-      };
-      localStorage.setItem('aquagest_usuarios', JSON.stringify([adminInicial]));
-    }
+    // 1. Obtener sesión inicial
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
 
-    // 2. Verificar si hay sesión guardada en localStorage
-    const savedUser = localStorage.getItem('aquagest_user_session');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
+    // 2. Escuchar cambios en la autenticación
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const handleLogin = (userData) => {
-    setUser(userData);
-    localStorage.setItem('aquagest_user_session', JSON.stringify(userData));
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
   };
 
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem('aquagest_user_session');
-  };
-
-  if (loading) return null; // O un spinner
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
+        <p style={{ color: '#1e3a8a', fontWeight: '600' }}>Cargando AquaGest...</p>
+      </div>
+    );
+  }
 
   return (
     <>
-      {user ? (
-        <Dashboard user={user} onLogout={handleLogout} />
+      {session ? (
+        <Dashboard user={session.user} onLogout={handleLogout} />
       ) : (
-        <Login onLogin={handleLogin} />
+        <Login />
       )}
     </>
   )

@@ -1,28 +1,27 @@
 import React, { useState } from 'react';
+import { supabase } from '../../lib/supabase';
 
-const Login = ({ onLogin }) => {
+const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setIsSubmitting(true);
 
-        const usuarios = JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]');
-        
-        // Buscar el usuario en localStorage
-        const usuarioValido = usuarios.find(u => u.email === email && u.password === password);
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: password,
+        });
 
-        if (usuarioValido) {
-            if (usuarioValido.estado !== 'activo') {
-                setError('El usuario se encuentra inactivo. Contacte al administrador.');
-                return;
-            }
-            onLogin(usuarioValido);
-        } else {
-            setError('Credenciales incorrectas. Verifique su email y contraseña.');
+        if (error) {
+            setError('Credenciales incorrectas o usuario no registrado.');
+            setIsSubmitting(false);
         }
+        // App.jsx escuchará el cambio de sesión automáticamente
     };
 
     const containerStyle = {
@@ -127,11 +126,16 @@ const Login = ({ onLogin }) => {
 
                     <button 
                         type="submit" 
-                        style={buttonStyle}
-                        onMouseOver={(e) => e.target.style.backgroundColor = '#1e40af'}
-                        onMouseOut={(e) => e.target.style.backgroundColor = '#1e3a8a'}
+                        disabled={isSubmitting}
+                        style={{
+                            ...buttonStyle,
+                            opacity: isSubmitting ? 0.7 : 1,
+                            cursor: isSubmitting ? 'not-allowed' : 'pointer'
+                        }}
+                        onMouseOver={(e) => !isSubmitting && (e.target.style.backgroundColor = '#1e40af')}
+                        onMouseOut={(e) => !isSubmitting && (e.target.style.backgroundColor = '#1e3a8a')}
                     >
-                        Entrar al Sistema
+                        {isSubmitting ? 'Iniciando sesión...' : 'Entrar al Sistema'}
                     </button>
                 </form>
 
