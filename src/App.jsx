@@ -7,7 +7,23 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Verificar si hay sesión guardada en localStorage
+    // 1. Sembrado de usuario inicial si no hay ninguno
+    const usuariosExistentes = JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]');
+    if (usuariosExistentes.length === 0) {
+      const adminInicial = {
+        id: 'admin-1',
+        nombre: 'Administrador',
+        apellido: 'Sistema',
+        email: 'admin@aquagest.com',
+        password: 'admin123',
+        rol: 'administrador',
+        estado: 'activo',
+        fechaRegistro: new Date().toISOString()
+      };
+      localStorage.setItem('aquagest_usuarios', JSON.stringify([adminInicial]));
+    }
+
+    // 2. Verificar si hay sesión guardada en localStorage
     const savedUser = localStorage.getItem('aquagest_user_session');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
