@@ -39,7 +39,6 @@ const OrdersTable = () => {
         }
     };
 
-
     return (
         <div className="orders-area">
             <div className="orders-header">Pedidos</div>
@@ -48,6 +47,7 @@ const OrdersTable = () => {
                 <div className={`order-tab ${activeTab === 'Pendientes' ? 'active' : ''}`} onClick={() => setActiveTab('Pendientes')}>Pendientes</div>
                 <div className={`order-tab ${activeTab === 'Anulados' ? 'active' : ''}`} onClick={() => setActiveTab('Anulados')}>Anulados</div>
             </div>
+            
             {/* Desktop Table View */}
             <div className="table-responsive-desktop" style={{ overflowX: 'auto' }}>
                 <table className="orders-table">
@@ -60,6 +60,7 @@ const OrdersTable = () => {
                             <th>Responsable</th>
                             <th>Cliente</th>
                             <th>Total</th>
+                            <th>Pago</th>
                             <th>Teléfono</th>
                             <th>Dirección</th>
                             <th>Ref/Notas</th>
@@ -68,7 +69,7 @@ const OrdersTable = () => {
                     </thead>
                     <tbody>
                         {isLoading ? (
-                            <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>Cargando pedidos...</td></tr>
+                            <tr><td colSpan="12" style={{ textAlign: 'center', padding: '2rem' }}>Cargando pedidos...</td></tr>
                         ) : orders.length > 0 ? orders.map(order => (
                             <tr key={order.id}>
                                 <td style={{ fontSize: '0.7rem' }}>{order.id.split('-')[0]}</td>
@@ -78,6 +79,18 @@ const OrdersTable = () => {
                                 <td style={{ fontSize: '0.75rem' }}>Administrador</td>
                                 <td>{order.clientes?.nombre || 'Consumidor Final'}</td>
                                 <td style={{ fontWeight: '600' }}>${order.total}</td>
+                                <td>
+                                    <span style={{ 
+                                        padding: '2px 8px', 
+                                        borderRadius: '12px', 
+                                        fontSize: '0.65rem',
+                                        fontWeight: '600',
+                                        backgroundColor: order.pago_estado === 'pagado' ? '#d1fae5' : (order.medio_pago === 'naranja_x' ? '#fee2e2' : '#fef3c7'),
+                                        color: order.pago_estado === 'pagado' ? '#065f46' : (order.medio_pago === 'naranja_x' ? '#991b1b' : '#92400e')
+                                    }}>
+                                        {order.pago_estado === 'pagado' ? 'PAGADO' : (order.medio_pago === 'naranja_x' ? 'DIGITAL' : 'PENDIENTE')}
+                                    </span>
+                                </td>
                                 <td>{order.clientes?.telefono || '-'}</td>
                                 <td style={{ fontSize: '0.7rem', maxWidth: '150px' }}>{order.clientes?.direccion || '-'}</td>
                                 <td style={{ fontSize: '0.7rem' }}>{order.notas}</td>
@@ -87,7 +100,7 @@ const OrdersTable = () => {
                                     ))}
                                 </td>
                             </tr>
-                        )) : <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>No hay pedidos {activeTab.toLowerCase()}</td></tr>}
+                        )) : <tr><td colSpan="12" style={{ textAlign: 'center', padding: '2rem' }}>No hay pedidos {activeTab.toLowerCase()}</td></tr>}
                     </tbody>
                 </table>
             </div>
@@ -110,19 +123,31 @@ const OrdersTable = () => {
                             <span>📍 {order.clientes?.direccion || 'Retiro local'}</span>
                             <span>{new Date(order.fecha).toLocaleDateString()}</span>
                         </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '4px' }}>
-                            {order.detalles_pedido?.map((d, i) => (
-                                <span key={i} style={{
-                                    backgroundColor: '#ebf2ff',
-                                    color: '#245be0',
-                                    padding: '2px 8px',
-                                    borderRadius: '12px',
-                                    fontSize: '0.7rem',
-                                    fontWeight: '500'
-                                }}>
-                                    {d.cantidad}x {d.producto}
-                                </span>
-                            ))}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                {order.detalles_pedido?.map((d, i) => (
+                                    <span key={i} style={{
+                                        backgroundColor: '#ebf2ff',
+                                        color: '#245be0',
+                                        padding: '2px 8px',
+                                        borderRadius: '12px',
+                                        fontSize: '0.7rem',
+                                        fontWeight: '500'
+                                    }}>
+                                        {d.cantidad}x {d.producto}
+                                    </span>
+                                ))}
+                            </div>
+                            <span style={{ 
+                                padding: '2px 8px', 
+                                borderRadius: '12px', 
+                                fontSize: '0.6rem',
+                                fontWeight: '700',
+                                backgroundColor: order.pago_estado === 'pagado' ? '#d1fae5' : (order.medio_pago === 'naranja_x' ? '#fee2e2' : '#fef3c7'),
+                                color: order.pago_estado === 'pagado' ? '#065f46' : (order.medio_pago === 'naranja_x' ? '#991b1b' : '#92400e')
+                            }}>
+                                {order.pago_estado === 'pagado' ? 'PAGADO' : (order.medio_pago === 'naranja_x' ? 'DIGITAL' : 'PENDIENTE')}
+                            </span>
                         </div>
                         {order.notas && (
                             <div style={{ fontSize: '0.7rem', color: '#888', fontStyle: 'italic', marginTop: '4px' }}>
