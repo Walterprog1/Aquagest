@@ -1,16 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import VehiculoFormModal from './VehiculoFormModal';
+import { supabase } from '../../lib/supabase';
 
 const VehiculosListModal = ({ isOpen, onClose }) => {
     const [vehiculos, setVehiculos] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [vehiculoAEditar, setVehiculoAEditar] = useState(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-    const cargarVehiculos = () => {
-        const guardados = JSON.parse(localStorage.getItem('aquagest_vehiculos') || '[]');
-        setVehiculos(guardados);
+    const cargarVehiculos = async () => {
+        setIsLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('vehiculos')
+                .select('*')
+                .order('patente', { ascending: true });
+
+            if (error) throw error;
+            setVehiculos(data || []);
+        } catch (error) {
+            console.error("Error al cargar vehículos:", error);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -24,6 +38,23 @@ const VehiculosListModal = ({ isOpen, onClose }) => {
         setIsEditModalOpen(true);
     };
 
+    const handleDelete = async (id) => {
+        if (window.confirm('¿Está seguro de que desea eliminar este vehículo?')) {
+            try {
+                const { error } = await supabase
+                    .from('vehiculos')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) throw error;
+                cargarVehiculos();
+            } catch (error) {
+                console.error("Error al eliminar vehículo:", error);
+                alert("No se pudo eliminar el vehículo.");
+            }
+        }
+    };
+
     const handleCloseEdit = () => {
         setIsEditModalOpen(false);
         setVehiculoAEditar(null);
@@ -31,9 +62,9 @@ const VehiculosListModal = ({ isOpen, onClose }) => {
     };
 
     const filteredVehiculos = vehiculos.filter(v =>
-        v.marca.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        v.modelo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        v.patente.toLowerCase().includes(searchTerm.toLowerCase())
+        (v.marca || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (v.modelo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (v.patente || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const tableStyle = {
@@ -102,7 +133,7 @@ const VehiculosListModal = ({ isOpen, onClose }) => {
                                         <strong>{v.marca}</strong> {v.modelo}
                                     </td>
                                     <td style={tdStyle}>{v.patente.toUpperCase()}</td>
-                                    <td style={tdStyle}>{v.capacidadCarga || '-'}</td>
+                                    <td style={tdStyle}>{v.capacidad || '-'}</td>
                                     <td style={tdStyle}>
                                         <span style={{
                                             padding: '2px 8px',
@@ -114,19 +145,35 @@ const VehiculosListModal = ({ isOpen, onClose }) => {
                                         </span>
                                     </td>
                                     <td style={tdStyle}>
-                                        <button
-                                            onClick={() => handleEdit(v)}
-                                            style={{
-                                                padding: '4px 8px',
-                                                backgroundColor: '#f3f4f6',
-                                                border: '1px solid #d1d5db',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                fontSize: '0.75rem'
-                                            }}
-                                        >
-                                            ✏️ Editar
-                                        </button>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <button
+                                                onClick={() => handleEdit(v)}
+                                                style={{
+                                                    padding: '4px 8px',
+                                                    backgroundColor: '#f3f4f6',
+                                                    border: '1px solid #d1d5db',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.75rem'
+                                                }}
+                                            >
+                                                ✏️ Editar
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(v.id)}
+                                                style={{
+                                                    padding: '4px 8px',
+                                                    backgroundColor: '#fee2e2',
+                                                    color: '#991b1b',
+                                                    border: '1px solid #fecaca',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.75rem'
+                                                }}
+                                            >
+                                                🗑️ Borrar
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             )) : (

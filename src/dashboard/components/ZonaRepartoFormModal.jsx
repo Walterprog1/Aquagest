@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import Modal from './Modal';
+import { supabase } from '../../lib/supabase';
 
 const ZonaRepartoFormModal = ({ isOpen, onClose, zonaAEditar }) => {
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         nombre: '',
         descripcion: '',
@@ -14,7 +16,7 @@ const ZonaRepartoFormModal = ({ isOpen, onClose, zonaAEditar }) => {
             setFormData({
                 nombre: zonaAEditar.nombre || '',
                 descripcion: zonaAEditar.descripcion || '',
-                codigoPostal: zonaAEditar.codigoPostal || '',
+                codigoPostal: zonaAEditar.codigoPostal || '', // Se puede guardar en descripción o nueva columna
                 diasVisita: zonaAEditar.diasVisita || []
             });
         } else if (isOpen && !zonaAEditar) {
@@ -42,28 +44,47 @@ const ZonaRepartoFormModal = ({ isOpen, onClose, zonaAEditar }) => {
         }
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setIsSubmitting(true);
 
-        const zonasGuardadas = JSON.parse(localStorage.getItem('aquagest_zonas') || '[]');
-
-        if (zonaAEditar) {
-            const index = zonasGuardadas.findIndex(z => z.id === zonaAEditar.id);
-            if (index !== -1) {
-                zonasGuardadas[index] = { ...zonaAEditar, ...formData };
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (!user) {
+                alert("Debes estar autenticado para guardar datos.");
+                return;
             }
-        } else {
-            const nuevaZona = {
-                ...formData,
-                id: Date.now().toString()
+
+            const zonaData = {
+                nombre: formData.nombre,
+                descripcion: formData.descripcion + (formData.codigoPostal ? ` (CP: ${formData.codigoPostal})` : '') + 
+                           (formData.diasVisita.length > 0 ? ` [Días: ${formData.diasVisita.join(', ')}]` : ''),
+                user_id: user.id
             };
-            zonasGuardadas.push(nuevaZona);
+
+            let result;
+            if (zonaAEditar) {
+                result = await supabase
+                    .from('zonas_reparto')
+                    .update(zonaData)
+                    .eq('id', zonaAEditar.id);
+            } else {
+                result = await supabase
+                    .from('zonas_reparto')
+                    .insert([zonaData]);
+            }
+
+            if (result.error) throw result.error;
+
+            alert(zonaAEditar ? '¡Zona de Reparto actualizada con éxito!' : '¡Zona de Reparto registrada con éxito!');
+            onClose();
+        } catch (error) {
+            console.error("Error al guardar zona:", error);
+            alert("No se pudo guardar la zona: " + error.message);
+        } finally {
+            setIsSubmitting(false);
         }
-
-        localStorage.setItem('aquagest_zonas', JSON.stringify(zonasGuardadas));
-
-        alert(zonaAEditar ? '¡Zona de Reparto actualizada con éxito!' : '¡Zona de Reparto registrada con éxito!');
-        onClose();
     };
 
     const inputStyle = {

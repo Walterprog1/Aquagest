@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import Modal from './Modal';
+import { supabase } from '../../lib/supabase';
 
 const ClienteFormModal = ({ isOpen, onClose, clienteAEditar }) => {
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         nombre: '',
         direccion: '',
@@ -27,13 +29,12 @@ const ClienteFormModal = ({ isOpen, onClose, clienteAEditar }) => {
                 whatsapp: clienteAEditar.whatsapp || '',
                 tipo: clienteAEditar.tipo || 'residencial',
                 email: clienteAEditar.email || '',
-                precioEspecialBidon20L: clienteAEditar.precioEspecialBidon20L || '',
+                precioEspecialBidon20L: clienteAEditar.precio_especial || '',
                 notas: clienteAEditar.notas || '',
                 lat: clienteAEditar.lat || '',
                 lng: clienteAEditar.lng || ''
             });
         } else if (isOpen && !clienteAEditar) {
-            // Limpiar si es creación nueva
             setFormData({
                 nombre: '',
                 direccion: '',
@@ -83,35 +84,55 @@ const ClienteFormModal = ({ isOpen, onClose, clienteAEditar }) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setIsSubmitting(true);
 
-        const clientesGuardados = JSON.parse(localStorage.getItem('aquagest_clientes') || '[]');
-
-        if (clienteAEditar) {
-            // Modo Edición: Buscamos y reemplazamos
-            const index = clientesGuardados.findIndex(c => c.id === clienteAEditar.id);
-            if (index !== -1) {
-                clientesGuardados[index] = {
-                    ...clienteAEditar,
-                    ...formData,
-                    ultimaModificacion: new Date().toISOString()
-                };
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (!user) {
+                alert("Debes estar autenticado para guardar datos.");
+                return;
             }
-        } else {
-            // Modo Creación
-            const nuevoCliente = {
-                ...formData,
-                id: Date.now().toString(),
-                fechaRegistro: new Date().toISOString()
+
+            const clientData = {
+                nombre: formData.nombre,
+                direccion: formData.direccion,
+                localidad: formData.localidad,
+                telefono: formData.telefono,
+                whatsapp: formData.whatsapp,
+                tipo: formData.tipo,
+                email: formData.email,
+                precio_especial: parseFloat(formData.precioEspecialBidon20L) || 0,
+                notas: formData.notas,
+                lat: formData.lat ? parseFloat(formData.lat) : null,
+                lng: formData.lng ? parseFloat(formData.lng) : null,
+                user_id: user.id
             };
-            clientesGuardados.push(nuevoCliente);
+
+            let result;
+            if (clienteAEditar) {
+                result = await supabase
+                    .from('clientes')
+                    .update(clientData)
+                    .eq('id', clienteAEditar.id);
+            } else {
+                result = await supabase
+                    .from('clientes')
+                    .insert([clientData]);
+            }
+
+            if (result.error) throw result.error;
+
+            alert(clienteAEditar ? '¡Cliente actualizado con éxito!' : '¡Cliente guardado con éxito!');
+            onClose();
+        } catch (error) {
+            console.error("Error al guardar cliente:", error);
+            alert("No se pudo guardar el cliente: " + error.message);
+        } finally {
+            setIsSubmitting(false);
         }
-
-        localStorage.setItem('aquagest_clientes', JSON.stringify(clientesGuardados));
-
-        alert(clienteAEditar ? '¡Cliente actualizado con éxito!' : '¡Cliente guardado con éxito!');
-        onClose();
     };
 
     const inputStyle = {

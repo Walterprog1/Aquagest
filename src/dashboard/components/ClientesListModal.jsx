@@ -1,18 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import ClienteFormModal from './ClienteFormModal';
+import { supabase } from '../../lib/supabase';
 
 const ClientesListModal = ({ isOpen, onClose }) => {
-    // ... (estados previos)
     const [clientes, setClientes] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [clienteAEditar, setClienteAEditar] = useState(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-    // ... (funciones previas)
-    const cargarClientes = () => {
-        const guardados = JSON.parse(localStorage.getItem('aquagest_clientes') || '[]');
-        setClientes(guardados);
+    const cargarClientes = async () => {
+        setIsLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('clientes')
+                .select('*')
+                .order('nombre', { ascending: true });
+
+            if (error) throw error;
+            setClientes(data || []);
+        } catch (error) {
+            console.error("Error al cargar clientes:", error);
+            // alert("No se pudieron cargar los clientes.");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -26,12 +39,20 @@ const ClientesListModal = ({ isOpen, onClose }) => {
         setIsEditModalOpen(true);
     };
 
-    const handleDelete = (id) => {
+    const handleDelete = async (id) => {
         if (window.confirm('¿Está seguro de que desea eliminar este cliente? Esta acción no se puede deshacer.')) {
-            const guardados = JSON.parse(localStorage.getItem('aquagest_clientes') || '[]');
-            const actualizados = guardados.filter(c => c.id !== id);
-            localStorage.setItem('aquagest_clientes', JSON.stringify(actualizados));
-            cargarClientes();
+            try {
+                const { error } = await supabase
+                    .from('clientes')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) throw error;
+                cargarClientes();
+            } catch (error) {
+                console.error("Error al eliminar cliente:", error);
+                alert("No se pudo eliminar el cliente.");
+            }
         }
     };
 
@@ -42,8 +63,8 @@ const ClientesListModal = ({ isOpen, onClose }) => {
     };
 
     const filteredClientes = clientes.filter(cliente =>
-        cliente.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cliente.direccion.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (cliente.nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (cliente.direccion || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (cliente.localidad && cliente.localidad.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
@@ -137,7 +158,7 @@ const ClientesListModal = ({ isOpen, onClose }) => {
                                     </td>
                                     <td style={tdStyle}>{cliente.telefono}</td>
                                     <td style={tdStyle}>
-                                        {cliente.precioEspecialBidon20L ? `$${cliente.precioEspecialBidon20L}` : '-'}
+                                        {cliente.precio_especial ? `$${cliente.precio_especial}` : '-'}
                                     </td>
                                     <td style={tdStyle}>
                                         <div style={{ display: 'flex', gap: '0.5rem' }}>

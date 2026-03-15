@@ -1,16 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import ZonaRepartoFormModal from './ZonaRepartoFormModal';
+import { supabase } from '../../lib/supabase';
 
 const ZonasListModal = ({ isOpen, onClose }) => {
     const [zonas, setZonas] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [zonaAEditar, setZonaAEditar] = useState(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-    const cargarZonas = () => {
-        const guardados = JSON.parse(localStorage.getItem('aquagest_zonas') || '[]');
-        setZonas(guardados);
+    const cargarZonas = async () => {
+        setIsLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('zonas_reparto')
+                .select('*')
+                .order('nombre', { ascending: true });
+
+            if (error) throw error;
+            setZonas(data || []);
+        } catch (error) {
+            console.error("Error al cargar zonas:", error);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -24,6 +38,23 @@ const ZonasListModal = ({ isOpen, onClose }) => {
         setIsEditModalOpen(true);
     };
 
+    const handleDelete = async (id) => {
+        if (window.confirm('¿Está seguro de que desea eliminar esta zona?')) {
+            try {
+                const { error } = await supabase
+                    .from('zonas_reparto')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) throw error;
+                cargarZonas();
+            } catch (error) {
+                console.error("Error al eliminar zona:", error);
+                alert("No se pudo eliminar la zona.");
+            }
+        }
+    };
+
     const handleCloseEdit = () => {
         setIsEditModalOpen(false);
         setZonaAEditar(null);
@@ -31,8 +62,8 @@ const ZonasListModal = ({ isOpen, onClose }) => {
     };
 
     const filteredZonas = zonas.filter(z =>
-        z.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        z.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
+        (z.nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (z.descripcion || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const tableStyle = {
@@ -99,19 +130,35 @@ const ZonasListModal = ({ isOpen, onClose }) => {
                                         </div>
                                     </td>
                                     <td style={tdStyle}>
-                                        <button
-                                            onClick={() => handleEdit(z)}
-                                            style={{
-                                                padding: '4px 8px',
-                                                backgroundColor: '#f3f4f6',
-                                                border: '1px solid #d1d5db',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                fontSize: '0.75rem'
-                                            }}
-                                        >
-                                            ✏️ Editar
-                                        </button>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <button
+                                                onClick={() => handleEdit(z)}
+                                                style={{
+                                                    padding: '4px 8px',
+                                                    backgroundColor: '#f3f4f6',
+                                                    border: '1px solid #d1d5db',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.75rem'
+                                                }}
+                                            >
+                                                ✏️ Editar
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(z.id)}
+                                                style={{
+                                                    padding: '4px 8px',
+                                                    backgroundColor: '#fee2e2',
+                                                    color: '#991b1b',
+                                                    border: '1px solid #fecaca',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.75rem'
+                                                }}
+                                            >
+                                                🗑️ Borrar
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             )) : (

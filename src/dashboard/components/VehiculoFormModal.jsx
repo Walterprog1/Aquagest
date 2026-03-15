@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import Modal from './Modal';
+import { supabase } from '../../lib/supabase';
 
 const VehiculoFormModal = ({ isOpen, onClose, vehiculoAEditar }) => {
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         marca: '',
         modelo: '',
@@ -18,7 +20,7 @@ const VehiculoFormModal = ({ isOpen, onClose, vehiculoAEditar }) => {
                 marca: vehiculoAEditar.marca || '',
                 modelo: vehiculoAEditar.modelo || '',
                 patente: vehiculoAEditar.patente || '',
-                capacidadCarga: vehiculoAEditar.capacidadCarga || '',
+                capacidadCarga: vehiculoAEditar.capacidad || '',
                 estado: vehiculoAEditar.estado || 'activo',
                 vencimientoSeguro: vehiculoAEditar.vencimientoSeguro || '',
                 notas: vehiculoAEditar.notas || ''
@@ -41,28 +43,51 @@ const VehiculoFormModal = ({ isOpen, onClose, vehiculoAEditar }) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setIsSubmitting(true);
 
-        const vehiculosGuardados = JSON.parse(localStorage.getItem('aquagest_vehiculos') || '[]');
-
-        if (vehiculoAEditar) {
-            const index = vehiculosGuardados.findIndex(v => v.id === vehiculoAEditar.id);
-            if (index !== -1) {
-                vehiculosGuardados[index] = { ...vehiculoAEditar, ...formData };
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (!user) {
+                alert("Debes estar autenticado para guardar datos.");
+                return;
             }
-        } else {
-            const nuevoVehiculo = {
-                ...formData,
-                id: Date.now().toString()
+
+            const vehiculoData = {
+                marca: formData.marca,
+                modelo: formData.modelo,
+                patente: formData.patente,
+                capacidad: parseInt(formData.capacidadCarga) || 0,
+                estado: formData.estado,
+                user_id: user.id
+                // Notas y vencimientoSeguro se pueden añadir a la tabla si es necesario
+                // Por ahora solo las columnas clave creadas en el SQL
             };
-            vehiculosGuardados.push(nuevoVehiculo);
+
+            let result;
+            if (vehiculoAEditar) {
+                result = await supabase
+                    .from('vehiculos')
+                    .update(vehiculoData)
+                    .eq('id', vehiculoAEditar.id);
+            } else {
+                result = await supabase
+                    .from('vehiculos')
+                    .insert([vehiculoData]);
+            }
+
+            if (result.error) throw result.error;
+
+            alert(vehiculoAEditar ? '¡Vehículo actualizado con éxito!' : '¡Vehículo registrado con éxito!');
+            onClose();
+        } catch (error) {
+            console.error("Error al guardar vehículo:", error);
+            alert("No se pudo guardar el vehículo: " + error.message);
+        } finally {
+            setIsSubmitting(false);
         }
-
-        localStorage.setItem('aquagest_vehiculos', JSON.stringify(vehiculosGuardados));
-
-        alert(vehiculoAEditar ? '¡Vehículo actualizado con éxito!' : '¡Vehículo registrado con éxito!');
-        onClose();
     };
 
     const inputStyle = {
