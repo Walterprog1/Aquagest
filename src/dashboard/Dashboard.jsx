@@ -1,5 +1,6 @@
 import React from 'react';
 import Header from './components/Header';
+import MigrationTool from './components/MigrationTool';
 import StatCards from './components/StatCards';
 import QuickActions from './components/QuickActions';
 import TodayDeliveries from './components/TodayDeliveries';
@@ -24,6 +25,8 @@ const Dashboard = ({ user, onLogout }) => {
                 <h1 className="page-title">
                     <span>📦</span> Escritorio
                 </h1>
+
+                <MigrationTool user={user} />
 
                 <StatCards
                     onOpenClientes={() => setShowClientes(true)}
