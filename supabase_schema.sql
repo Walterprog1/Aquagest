@@ -1,3 +1,8 @@
+-- INSTRUCCIONES DE LIMPIEZA (Ejecutar para resetear las tablas si hay errores de esquema)
+DROP TABLE IF EXISTS clientes CASCADE;
+DROP TABLE IF EXISTS vehiculos CASCADE;
+DROP TABLE IF EXISTS zonas_reparto CASCADE;
+
 -- TABLA DE CLIENTES
 CREATE TABLE IF NOT EXISTS clientes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
