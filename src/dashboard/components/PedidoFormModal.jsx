@@ -58,8 +58,6 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
 
     const [paymentUrl, setPaymentUrl] = useState(null);
 
-    const [paymentUrl, setPaymentUrl] = useState(null);
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
