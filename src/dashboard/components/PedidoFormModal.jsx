@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { supabase } from '../../lib/supabase';
+import { createPaymentLink } from '../../lib/naranjaX';
 
 const PedidoFormModal = ({ isOpen, onClose }) => {
     const [clientesGuardados, setClientesGuardados] = useState([]);
@@ -57,9 +58,12 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
 
     const [paymentUrl, setPaymentUrl] = useState(null);
 
+    const [paymentUrl, setPaymentUrl] = useState(null);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
+        setPaymentUrl(null);
 
         try {
             const { data: { user } } = await supabase.auth.getUser();
@@ -95,19 +99,37 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
 
             if (errorDetalle) throw errorDetalle;
 
-            alert(formData.medioPago === 'transferencia' ? '¡Venta registrada! Esperando transferencia...' : '¡Venta registrada con éxito!');
-            
-            setFormData({
-                cliente: '',
-                fecha: new Date().toISOString().split('T')[0],
-                envasesEntregados: 0,
-                envasesRecibidos: 0,
-                precioUnitario: 2500,
-                medioPago: 'efectivo',
-                notas: ''
-            });
+            // 3. Generar Link si es transferencia automática
+            if (formData.medioPago === 'transferencia') {
+                try {
+                    const url = await createPaymentLink({
+                        id: pedido.id,
+                        total: calcularTotal()
+                    });
+                    setPaymentUrl(url);
+                    alert('Pedido registrado. Generando link de Nave para conciliación automática...');
+                } catch (pe) {
+                    console.error("Fallo Nave:", pe);
+                    alert("Venta guardada, pero no pudimos generar el link de Nave. Deberás verificar el pago manualmente.");
+                }
+            } else {
+                alert('¡Venta registrada con éxito!');
+                onClose();
+            }
 
-            onClose();
+            // No reseteamos si hay link para que el repartidor lo vea
+            if (formData.medioPago !== 'transferencia') {
+                setFormData({
+                    cliente: '',
+                    fecha: new Date().toISOString().split('T')[0],
+                    envasesEntregados: 0,
+                    envasesRecibidos: 0,
+                    precioUnitario: 2500,
+                    medioPago: 'efectivo',
+                    notas: ''
+                });
+            }
+
         } catch (error) {
             console.error("Error al registrar pedido:", error);
             alert("No se pudo registrar la venta: " + error.message);
@@ -189,18 +211,28 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
                     </div>
                 </div>
 
-                {formData.medioPago === 'transferencia' && (
+                {paymentUrl && (
                     <div style={{ 
                         marginTop: '1.5rem', 
                         padding: '1rem', 
-                        backgroundColor: '#eff6ff', 
-                        border: '1px solid #dbeafe', 
+                        backgroundColor: '#fff7ed', 
+                        border: '1px solid #ffedd5', 
                         borderRadius: 'var(--border-radius-md)',
                         textAlign: 'center'
                     }}>
-                        <p style={{ fontWeight: '600', color: '#1e40af', marginBottom: '0.25rem' }}>Datos para Transferencia</p>
-                        <p style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#1d4ed8', letterSpacing: '0.5px' }}>ALIAS: surgentesnogoli</p>
-                        <p style={{ fontSize: '0.75rem', color: '#60a5fa', marginTop: '0.25rem' }}>Indicar al cliente que envíe el comprobante al WhatsApp.</p>
+                        <p style={{ fontWeight: '600', color: '#c2410c', marginBottom: '0.5rem' }}>¡Link de Pago Generado!</p>
+                        <a href={paymentUrl} target="_blank" rel="noreferrer" style={{
+                            display: 'inline-block',
+                            padding: '0.75rem 1.5rem',
+                            backgroundColor: '#f97316',
+                            color: 'white',
+                            textDecoration: 'none',
+                            borderRadius: '8px',
+                            fontWeight: 'bold',
+                            marginBottom: '0.5rem'
+                        }}>PAGAR CON NAVE</a>
+                        <p style={{ fontSize: '0.75rem', color: '#9a3412', marginBottom: '0.5rem' }}>El cliente debe elegir 'Transferencia' dentro de Nave para que sea automático.</p>
+                        <p style={{ fontSize: '0.9rem', fontWeight: 'bold', border: '1px dashed #fdba74', padding: '4px', display: 'inline-block' }}>ALIAS: surgentesnogoli</p>
                     </div>
                 )}
 

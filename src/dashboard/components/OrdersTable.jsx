@@ -101,10 +101,10 @@ const OrdersTable = () => {
                                             borderRadius: '12px', 
                                             fontSize: '0.65rem',
                                             fontWeight: '600',
-                                            backgroundColor: order.pago_estado === 'pagado' ? '#d1fae5' : (order.medio_pago === 'transferencia' ? '#eff6ff' : '#fef3c7'),
-                                            color: order.pago_estado === 'pagado' ? '#065f46' : (order.medio_pago === 'transferencia' ? '#1e40af' : '#92400e')
+                                            backgroundColor: order.pago_estado === 'pagado' ? '#d1fae5' : (order.medio_pago === 'transferencia' ? '#fff7ed' : '#fef3c7'),
+                                            color: order.pago_estado === 'pagado' ? '#065f46' : (order.medio_pago === 'transferencia' ? '#c2410c' : '#92400e')
                                         }}>
-                                            {order.pago_estado === 'pagado' ? 'PAGADO' : (order.medio_pago === 'transferencia' ? 'TRANSF. PEND.' : 'PENDIENTE')}
+                                            {order.pago_estado === 'pagado' ? 'PAGADO' : (order.medio_pago === 'transferencia' ? 'AUTO NAVE' : 'PENDIENTE')}
                                         </span>
                                         {order.pago_estado !== 'pagado' && (
                                             <button 
