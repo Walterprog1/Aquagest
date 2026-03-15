@@ -60,6 +60,8 @@ const MigrationTool = ({ user }) => {
                     patente: v.patente,
                     capacidad: parseInt(v.capacidadCarga) || 0,
                     estado: v.estado,
+                    vencimiento_seguro: v.vencimientoSeguro || null,
+                    notas: v.notas || '',
                     user_id: user.id
                 }));
                 const { error } = await supabase.from('vehiculos').insert(vehiculosToInsert);

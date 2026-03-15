@@ -4,13 +4,14 @@ CREATE TABLE IF NOT EXISTS clientes (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
     nombre TEXT NOT NULL,
-    apellido TEXT NOT NULL,
-    dni TEXT,
     direccion TEXT NOT NULL,
     localidad TEXT NOT NULL,
     telefono TEXT,
     whatsapp TEXT NOT NULL,
+    tipo TEXT DEFAULT 'residencial',
+    email TEXT,
     precio_especial NUMERIC DEFAULT 0,
+    notas TEXT,
     lat DOUBLE PRECISION,
     lng DOUBLE PRECISION
 );
@@ -24,7 +25,9 @@ CREATE TABLE IF NOT EXISTS vehiculos (
     modelo TEXT NOT NULL,
     patente TEXT NOT NULL,
     capacidad INTEGER,
-    estado TEXT DEFAULT 'activo'
+    estado TEXT DEFAULT 'activo',
+    vencimiento_seguro DATE,
+    notas TEXT
 );
 
 -- TABLA DE ZONAS DE REPARTO

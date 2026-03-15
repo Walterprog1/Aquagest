@@ -22,7 +22,7 @@ const VehiculoFormModal = ({ isOpen, onClose, vehiculoAEditar }) => {
                 patente: vehiculoAEditar.patente || '',
                 capacidadCarga: vehiculoAEditar.capacidad || '',
                 estado: vehiculoAEditar.estado || 'activo',
-                vencimientoSeguro: vehiculoAEditar.vencimientoSeguro || '',
+                vencimientoSeguro: vehiculoAEditar.vencimiento_seguro || '',
                 notas: vehiculoAEditar.notas || ''
             });
         } else if (isOpen && !vehiculoAEditar) {
@@ -61,9 +61,9 @@ const VehiculoFormModal = ({ isOpen, onClose, vehiculoAEditar }) => {
                 patente: formData.patente,
                 capacidad: parseInt(formData.capacidadCarga) || 0,
                 estado: formData.estado,
+                vencimiento_seguro: formData.vencimientoSeguro || null,
+                notas: formData.notas || '',
                 user_id: user.id
-                // Notas y vencimientoSeguro se pueden añadir a la tabla si es necesario
-                // Por ahora solo las columnas clave creadas en el SQL
             };
 
             let result;
