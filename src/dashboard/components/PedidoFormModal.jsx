@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { supabase } from '../../lib/supabase';
-import { createPaymentLink } from '../../lib/naranjaX';
 
 const PedidoFormModal = ({ isOpen, onClose }) => {
     const [clientesGuardados, setClientesGuardados] = useState([]);
@@ -61,7 +60,6 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-        setPaymentUrl(null);
 
         try {
             const { data: { user } } = await supabase.auth.getUser();
@@ -76,7 +74,7 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
                     total: calcularTotal(),
                     medio_pago: formData.medioPago,
                     estado: 'Entregado',
-                    pago_estado: formData.medioPago === 'naranja_x' ? 'pendiente' : (formData.medioPago === 'fiado' ? 'pendiente' : 'pagado'),
+                    pago_estado: (formData.medioPago === 'transferencia' || formData.medioPago === 'fiado') ? 'pendiente' : 'pagado',
                     notas: formData.notas,
                     user_id: user.id
                 }])
@@ -97,36 +95,19 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
 
             if (errorDetalle) throw errorDetalle;
 
-            // 3. Si es Naranja X, generar Link de Pago
-            if (formData.medioPago === 'naranja_x') {
-                try {
-                    const url = await createPaymentLink({
-                        id: pedido.id,
-                        total: calcularTotal()
-                    });
-                    setPaymentUrl(url);
-                    alert('Pedido guardado. Generando link de pago de Naranja X...');
-                } catch (pe) {
-                    console.error("No se pudo generar el link de pago:", pe);
-                    alert("Pedido guardado, pero hubo un error con Naranja X. Registra el pago manualmente.");
-                }
-            } else {
-                alert('¡Venta registrada con éxito en la nube!');
-                onClose();
-            }
+            alert(formData.medioPago === 'transferencia' ? '¡Venta registrada! Esperando transferencia...' : '¡Venta registrada con éxito!');
+            
+            setFormData({
+                cliente: '',
+                fecha: new Date().toISOString().split('T')[0],
+                envasesEntregados: 0,
+                envasesRecibidos: 0,
+                precioUnitario: 2500,
+                medioPago: 'efectivo',
+                notas: ''
+            });
 
-            // No reseteamos el form si hay una URL de pago para que la vea
-            if (formData.medioPago !== 'naranja_x') {
-                setFormData({
-                    cliente: '',
-                    fecha: new Date().toISOString().split('T')[0],
-                    envasesEntregados: 0,
-                    envasesRecibidos: 0,
-                    precioUnitario: 2500,
-                    medioPago: 'efectivo',
-                    notas: ''
-                });
-            }
+            onClose();
         } catch (error) {
             console.error("Error al registrar pedido:", error);
             alert("No se pudo registrar la venta: " + error.message);
@@ -197,7 +178,6 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
                         <select required style={{ ...inputStyle, marginBottom: 0 }} name="medioPago" value={formData.medioPago} onChange={handleChange}>
                             <option value="efectivo">Efectivo 💵</option>
                             <option value="transferencia">Transferencia 📱</option>
-                            <option value="naranja_x">Naranja X (Link de Pago) 🍊</option>
                             <option value="fiado">Pendiente de Pago / Fiado 📉</option>
                         </select>
                     </div>
@@ -209,27 +189,18 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
                     </div>
                 </div>
 
-                {paymentUrl && (
+                {formData.medioPago === 'transferencia' && (
                     <div style={{ 
                         marginTop: '1.5rem', 
                         padding: '1rem', 
-                        backgroundColor: '#fff7ed', 
-                        border: '1px solid #ffedd5', 
+                        backgroundColor: '#eff6ff', 
+                        border: '1px solid #dbeafe', 
                         borderRadius: 'var(--border-radius-md)',
                         textAlign: 'center'
                     }}>
-                        <p style={{ fontWeight: '600', color: '#c2410c', marginBottom: '0.5rem' }}>¡Link de Pago Generado!</p>
-                        <a href={paymentUrl} target="_blank" rel="noreferrer" style={{
-                            display: 'inline-block',
-                            padding: '0.75rem 1.5rem',
-                            backgroundColor: '#f97316',
-                            color: 'white',
-                            textDecoration: 'none',
-                            borderRadius: '8px',
-                            fontWeight: 'bold',
-                            marginBottom: '0.5rem'
-                        }}>PAGAR CON NARANJA X</a>
-                        <p style={{ fontSize: '0.75rem', color: '#9a3412' }}>Puedes compartir este link con el cliente o dejar que escanee el QR desde tu pantalla.</p>
+                        <p style={{ fontWeight: '600', color: '#1e40af', marginBottom: '0.25rem' }}>Datos para Transferencia</p>
+                        <p style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#1d4ed8', letterSpacing: '0.5px' }}>ALIAS: surgentesnogoli</p>
+                        <p style={{ fontSize: '0.75rem', color: '#60a5fa', marginTop: '0.25rem' }}>Indicar al cliente que envíe el comprobante al WhatsApp.</p>
                     </div>
                 )}
 

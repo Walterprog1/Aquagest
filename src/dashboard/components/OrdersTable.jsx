@@ -101,10 +101,10 @@ const OrdersTable = () => {
                                             borderRadius: '12px', 
                                             fontSize: '0.65rem',
                                             fontWeight: '600',
-                                            backgroundColor: order.pago_estado === 'pagado' ? '#d1fae5' : (order.medio_pago === 'naranja_x' ? '#fee2e2' : '#fef3c7'),
-                                            color: order.pago_estado === 'pagado' ? '#065f46' : (order.medio_pago === 'naranja_x' ? '#991b1b' : '#92400e')
+                                            backgroundColor: order.pago_estado === 'pagado' ? '#d1fae5' : (order.medio_pago === 'transferencia' ? '#eff6ff' : '#fef3c7'),
+                                            color: order.pago_estado === 'pagado' ? '#065f46' : (order.medio_pago === 'transferencia' ? '#1e40af' : '#92400e')
                                         }}>
-                                            {order.pago_estado === 'pagado' ? 'PAGADO' : (order.medio_pago === 'naranja_x' ? 'DIGITAL' : 'PENDIENTE')}
+                                            {order.pago_estado === 'pagado' ? 'PAGADO' : (order.medio_pago === 'transferencia' ? 'TRANSF. PEND.' : 'PENDIENTE')}
                                         </span>
                                         {order.pago_estado !== 'pagado' && (
                                             <button 
@@ -169,10 +169,10 @@ const OrdersTable = () => {
                                 borderRadius: '12px', 
                                 fontSize: '0.6rem',
                                 fontWeight: '700',
-                                backgroundColor: order.pago_estado === 'pagado' ? '#d1fae5' : (order.medio_pago === 'naranja_x' ? '#fee2e2' : '#fef3c7'),
-                                color: order.pago_estado === 'pagado' ? '#065f46' : (order.medio_pago === 'naranja_x' ? '#991b1b' : '#92400e')
+                                backgroundColor: order.pago_estado === 'pagado' ? '#d1fae5' : (order.medio_pago === 'transferencia' ? '#eff6ff' : '#fef3c7'),
+                                color: order.pago_estado === 'pagado' ? '#065f46' : (order.medio_pago === 'transferencia' ? '#1e40af' : '#92400e')
                             }}>
-                                {order.pago_estado === 'pagado' ? 'PAGADO' : (order.medio_pago === 'naranja_x' ? 'DIGITAL' : 'PENDIENTE')}
+                                {order.pago_estado === 'pagado' ? 'PAGADO' : (order.medio_pago === 'transferencia' ? 'TRANSF. PEND.' : 'PENDIENTE')}
                             </span>
                         </div>
                         {order.notas && (
