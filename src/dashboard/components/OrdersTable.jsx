@@ -32,10 +32,25 @@ const OrdersTable = () => {
 
             if (error) throw error;
             setOrders(data || []);
-        } catch (error) {
-            console.error("Error cargando pedidos:", error);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const confirmarPago = async (orderId) => {
+        if (!confirm('¿Confirmas que has recibido el pago de este pedido?')) return;
+        
+        try {
+            const { error } = await supabase
+                .from('pedidos')
+                .update({ pago_estado: 'pagado' })
+                .eq('id', orderId);
+
+            if (error) throw error;
+            cargarPedidos();
+        } catch (error) {
+            console.error("Error confirmando pago:", error);
+            alert("No se pudo confirmar el pago.");
         }
     };
 
@@ -80,16 +95,27 @@ const OrdersTable = () => {
                                 <td>{order.clientes?.nombre || 'Consumidor Final'}</td>
                                 <td style={{ fontWeight: '600' }}>${order.total}</td>
                                 <td>
-                                    <span style={{ 
-                                        padding: '2px 8px', 
-                                        borderRadius: '12px', 
-                                        fontSize: '0.65rem',
-                                        fontWeight: '600',
-                                        backgroundColor: order.pago_estado === 'pagado' ? '#d1fae5' : (order.medio_pago === 'naranja_x' ? '#fee2e2' : '#fef3c7'),
-                                        color: order.pago_estado === 'pagado' ? '#065f46' : (order.medio_pago === 'naranja_x' ? '#991b1b' : '#92400e')
-                                    }}>
-                                        {order.pago_estado === 'pagado' ? 'PAGADO' : (order.medio_pago === 'naranja_x' ? 'DIGITAL' : 'PENDIENTE')}
-                                    </span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <span style={{ 
+                                            padding: '2px 8px', 
+                                            borderRadius: '12px', 
+                                            fontSize: '0.65rem',
+                                            fontWeight: '600',
+                                            backgroundColor: order.pago_estado === 'pagado' ? '#d1fae5' : (order.medio_pago === 'naranja_x' ? '#fee2e2' : '#fef3c7'),
+                                            color: order.pago_estado === 'pagado' ? '#065f46' : (order.medio_pago === 'naranja_x' ? '#991b1b' : '#92400e')
+                                        }}>
+                                            {order.pago_estado === 'pagado' ? 'PAGADO' : (order.medio_pago === 'naranja_x' ? 'DIGITAL' : 'PENDIENTE')}
+                                        </span>
+                                        {order.pago_estado !== 'pagado' && (
+                                            <button 
+                                                onClick={() => confirmarPago(order.id)}
+                                                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8rem', padding: '0 4px' }}
+                                                title="Marcar como pagado"
+                                            >
+                                                ✅
+                                            </button>
+                                        )}
+                                    </div>
                                 </td>
                                 <td>{order.clientes?.telefono || '-'}</td>
                                 <td style={{ fontSize: '0.7rem', maxWidth: '150px' }}>{order.clientes?.direccion || '-'}</td>
