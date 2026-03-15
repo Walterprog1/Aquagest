@@ -48,46 +48,120 @@ const OrdersTable = () => {
                 <div className={`order-tab ${activeTab === 'Pendientes' ? 'active' : ''}`} onClick={() => setActiveTab('Pendientes')}>Pendientes</div>
                 <div className={`order-tab ${activeTab === 'Anulados' ? 'active' : ''}`} onClick={() => setActiveTab('Anulados')}>Anulados</div>
             </div>
-            <table className="orders-table">
-                <thead>
-                    <tr>
-                        <th>Cod</th>
-                        <th>Actualizado</th>
-                        <th>Creado</th>
-                        <th>Origen</th>
-                        <th>Responsable</th>
-                        <th>Cliente</th>
-                        <th>Comprobante</th>
-                        <th>Teléfono</th>
-                        <th>Dirección</th>
-                        <th>Referencia</th>
-                        <th>Productos</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {isLoading ? (
-                        <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>Cargando pedidos...</td></tr>
-                    ) : orders.length > 0 ? orders.map(order => (
-                        <tr key={order.id}>
-                            <td style={{ fontSize: '0.7rem' }}>{order.id.split('-')[0]}</td>
-                            <td style={{ fontSize: '0.75rem' }}>{new Date(order.created_at).toLocaleString()}</td>
-                            <td style={{ fontSize: '0.75rem' }}>{new Date(order.fecha).toLocaleDateString()}</td>
-                            <td><span style={{ backgroundColor: '#10b981', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>Mostrador</span></td>
-                            <td style={{ fontSize: '0.75rem' }}>Administrador</td>
-                            <td>{order.clientes?.nombre || 'Consumidor Final'}</td>
-                            <td>${order.total}</td>
-                            <td>{order.clientes?.telefono || '-'}</td>
-                            <td style={{ fontSize: '0.7rem', maxWidth: '150px' }}>{order.clientes?.direccion || '-'}</td>
-                            <td style={{ fontSize: '0.7rem' }}>{order.notas}</td>
-                            <td>
-                                {order.detalles_pedido?.map((d, i) => (
-                                    <div key={i} style={{ fontSize: '0.7rem' }}>{d.cantidad}x {d.producto}</div>
-                                ))}
-                            </td>
+            {/* Desktop Table View */}
+            <div className="table-responsive-desktop" style={{ overflowX: 'auto' }}>
+                <table className="orders-table">
+                    <thead>
+                        <tr>
+                            <th>Cod</th>
+                            <th>Actualizado</th>
+                            <th>Creado</th>
+                            <th>Origen</th>
+                            <th>Responsable</th>
+                            <th>Cliente</th>
+                            <th>Total</th>
+                            <th>Teléfono</th>
+                            <th>Dirección</th>
+                            <th>Ref/Notas</th>
+                            <th>Productos</th>
                         </tr>
-                    )) : <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>No hay pedidos {activeTab.toLowerCase()}</td></tr>}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {isLoading ? (
+                            <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>Cargando pedidos...</td></tr>
+                        ) : orders.length > 0 ? orders.map(order => (
+                            <tr key={order.id}>
+                                <td style={{ fontSize: '0.7rem' }}>{order.id.split('-')[0]}</td>
+                                <td style={{ fontSize: '0.75rem' }}>{new Date(order.created_at).toLocaleString()}</td>
+                                <td style={{ fontSize: '0.75rem' }}>{new Date(order.fecha).toLocaleDateString()}</td>
+                                <td><span style={{ backgroundColor: '#10b981', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>Mostrador</span></td>
+                                <td style={{ fontSize: '0.75rem' }}>Administrador</td>
+                                <td>{order.clientes?.nombre || 'Consumidor Final'}</td>
+                                <td style={{ fontWeight: '600' }}>${order.total}</td>
+                                <td>{order.clientes?.telefono || '-'}</td>
+                                <td style={{ fontSize: '0.7rem', maxWidth: '150px' }}>{order.clientes?.direccion || '-'}</td>
+                                <td style={{ fontSize: '0.7rem' }}>{order.notas}</td>
+                                <td>
+                                    {order.detalles_pedido?.map((d, i) => (
+                                        <div key={i} style={{ fontSize: '0.7rem' }}>{d.cantidad}x {d.producto}</div>
+                                    ))}
+                                </td>
+                            </tr>
+                        )) : <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>No hay pedidos {activeTab.toLowerCase()}</td></tr>}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Mobile Card View (Visible via CSS) */}
+            <div className="mobile-orders-view" style={{ display: 'none' }}>
+                {orders.map(order => (
+                    <div key={order.id} style={{
+                        padding: '1rem',
+                        borderBottom: '1px solid #eee',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.5rem'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: '700', color: 'var(--primary-blue)' }}>{order.clientes?.nombre || 'C. Final'}</span>
+                            <span style={{ fontWeight: '700', fontSize: '1.25rem' }}>${order.total}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#666' }}>
+                            <span>📍 {order.clientes?.direccion || 'Retiro local'}</span>
+                            <span>{new Date(order.fecha).toLocaleDateString()}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '4px' }}>
+                            {order.detalles_pedido?.map((d, i) => (
+                                <span key={i} style={{
+                                    backgroundColor: '#ebf2ff',
+                                    color: '#245be0',
+                                    padding: '2px 8px',
+                                    borderRadius: '12px',
+                                    fontSize: '0.7rem',
+                                    fontWeight: '500'
+                                }}>
+                                    {d.cantidad}x {d.producto}
+                                </span>
+                            ))}
+                        </div>
+                        {order.notas && (
+                            <div style={{ fontSize: '0.7rem', color: '#888', fontStyle: 'italic', marginTop: '4px' }}>
+                                📝 {order.notas}
+                            </div>
+                        )}
+                        <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+                            {order.clientes?.telefono && (
+                                <a href={`tel:${order.clientes.telefono}`} style={{
+                                    flex: 1,
+                                    textAlign: 'center',
+                                    padding: '8px',
+                                    backgroundColor: '#f3f4f6',
+                                    borderRadius: '6px',
+                                    textDecoration: 'none',
+                                    color: '#374151',
+                                    fontSize: '0.8rem',
+                                    fontWeight: '500'
+                                }}>📞 Llamar</a>
+                            )}
+                            <button style={{
+                                flex: 2,
+                                padding: '8px',
+                                backgroundColor: 'var(--primary-blue)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                fontSize: '0.8rem',
+                                fontWeight: '500'
+                            }}>Ver Detalles</button>
+                        </div>
+                    </div>
+                ))}
+                {orders.length === 0 && !isLoading && (
+                    <div style={{ padding: '2rem', textAlign: 'center', color: '#999' }}>
+                        No hay pedidos {activeTab.toLowerCase()}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
