@@ -18,7 +18,8 @@ const Login = () => {
         });
 
         if (error) {
-            setError('Credenciales incorrectas o usuario no registrado.');
+            console.error("Error de login:", error);
+            setError(error.message || 'Credenciales incorrectas o usuario no registrado.');
             setIsSubmitting(false);
         }
         // App.jsx escuchará el cambio de sesión automáticamente
