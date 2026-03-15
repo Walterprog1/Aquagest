@@ -10,7 +10,7 @@ import VehiculosListModal from './components/VehiculosListModal';
 import ZonasListModal from './components/ZonasListModal';
 import UsuariosListModal from './components/UsuariosListModal';
 
-const Dashboard = () => {
+const Dashboard = ({ user, onLogout }) => {
     const [showClientes, setShowClientes] = React.useState(false);
     const [showVehiculos, setShowVehiculos] = React.useState(false);
     const [showZonas, setShowZonas] = React.useState(false);
@@ -18,7 +18,7 @@ const Dashboard = () => {
 
     return (
         <div className="dashboard-container">
-            <Header />
+            <Header user={user} onLogout={onLogout} />
 
             <main className="content">
                 <h1 className="page-title">

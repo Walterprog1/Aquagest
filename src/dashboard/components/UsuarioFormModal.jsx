@@ -9,7 +9,8 @@ const UsuarioFormModal = ({ isOpen, onClose, usuarioAEditar }) => {
         email: '',
         telefono: '',
         rol: 'repartidor',
-        estado: 'activo'
+        estado: 'activo',
+        password: ''
     });
 
     React.useEffect(() => {
@@ -21,7 +22,8 @@ const UsuarioFormModal = ({ isOpen, onClose, usuarioAEditar }) => {
                 email: usuarioAEditar.email || '',
                 telefono: usuarioAEditar.telefono || '',
                 rol: usuarioAEditar.rol || 'repartidor',
-                estado: usuarioAEditar.estado || 'activo'
+                estado: usuarioAEditar.estado || 'activo',
+                password: usuarioAEditar.password || ''
             });
         } else if (isOpen && !usuarioAEditar) {
             setFormData({
@@ -31,7 +33,8 @@ const UsuarioFormModal = ({ isOpen, onClose, usuarioAEditar }) => {
                 email: '',
                 telefono: '',
                 rol: 'repartidor',
-                estado: 'activo'
+                estado: 'activo',
+                password: ''
             });
         }
     }, [isOpen, usuarioAEditar]);
@@ -111,6 +114,11 @@ const UsuarioFormModal = ({ isOpen, onClose, usuarioAEditar }) => {
                 <div style={{ marginBottom: '1rem' }}>
                     <label style={labelStyle}>Correo Electrónico *</label>
                     <input required style={inputStyle} type="email" name="email" value={formData.email} onChange={handleChange} placeholder="usuario@email.com" />
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                    <label style={labelStyle}>Contraseña de Acceso *</label>
+                    <input required style={inputStyle} type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Mínimo 6 caracteres" minLength="6" />
                 </div>
 
                 <div style={{ display: 'flex', gap: '1rem', backgroundColor: 'var(--background-gray)', padding: '1rem', borderRadius: 'var(--border-radius-md)', marginBottom: '1rem' }}>
