@@ -74,12 +74,19 @@ const OrdersTable = () => {
         if (!confirm('¿Confirmas que has recibido el pago de este pedido?')) return;
         
         try {
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('pedidos')
                 .update({ pago_estado: 'pagado' })
-                .eq('id', orderId);
+                .eq('id', orderId)
+                .select();
 
             if (error) throw error;
+
+            if (!data || data.length === 0) {
+                alert("No se pudo confirmar el pago. Verifique permisos.");
+                return;
+            }
+
             cargarPedidos();
             actualizarContadores();
         } catch (error) {
