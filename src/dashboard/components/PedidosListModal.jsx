@@ -67,46 +67,34 @@ const PedidosListModal = ({ isOpen, onClose }) => {
     };
 
     const eliminarPedido = async (orderId) => {
-        if (!confirm('¿Estás seguro de que deseas eliminar este pedido?')) return;
+        if (!confirm('¿Estás seguro de que deseas eliminar este pedido permanentemente?')) return;
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            
-            // Diagnóstico: ¿Podemos al menos actualizarlo?
-            const { error: errorUpdate } = await supabase
-                .from('pedidos')
-                .update({ notas: 'Intentando borrar...' })
-                .eq('id', orderId)
-                .select();
-
-            if (errorUpdate) {
-                console.error("Fallo de UPDATE:", errorUpdate);
-                alert("No tienes permisos ni siquiera para editar este pedido. RLS está bloqueando todo.");
-                return;
-            }
-
-            console.log("UPDATE exitoso, procediendo a borrar...");
-
-            // 1. Borrar detalles
+            // Eliminamos primero los detalles (por seguridad, aunque el cascade debería funcionar)
             await supabase.from('detalles_pedido').delete().eq('pedido_id', orderId);
 
-            // 2. Borrar pedido
-            const { data, error: errorPedido } = await supabase
+            // Eliminamos el pedido principal
+            const { data, error } = await supabase
                 .from('pedidos')
                 .delete()
                 .eq('id', orderId)
                 .select();
 
-            if (errorPedido || !data || data.length === 0) {
-                console.error("Fallo de DELETE tras UPDATE exitoso:", errorPedido);
-                alert("Puedes editar el pedido pero NO borrarlo. Hay una restricción de seguridad en la base de datos.");
+            if (error) {
+                console.error("Error al eliminar pedido:", error);
+                alert(`Error técnico de la base de datos: ${error.message}`);
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                alert("No se pudo eliminar el pedido. Esto suele ocurrir por falta de permisos en Supabase (Política RLS de Borrado).");
                 return;
             }
 
             alert("Pedido eliminado con éxito.");
             cargarPedidos();
         } catch (error) {
-            console.error("Error:", error);
-            alert("Error inesperado.");
+            console.error("Excepción en eliminarPedido:", error);
+            alert("Ocurrió un error inesperado. Por favor, intenta de nuevo.");
         }
     };
 
