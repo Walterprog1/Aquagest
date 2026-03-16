@@ -69,31 +69,44 @@ const PedidosListModal = ({ isOpen, onClose }) => {
     const eliminarPedido = async (orderId) => {
         if (!confirm('¿Estás seguro de que deseas eliminar este pedido por completo? Esta acción no se puede deshacer.')) return;
         try {
-            console.log("Intentando eliminar pedido ID:", orderId);
-            const { data, error } = await supabase
+            console.log("Iniciando eliminación manual del pedido:", orderId);
+            
+            // 1. Borrar detalles primero para evitar conflictos de RLS con ON DELETE CASCADE
+            const { error: errorDetalles } = await supabase
+                .from('detalles_pedido')
+                .delete()
+                .eq('pedido_id', orderId);
+
+            if (errorDetalles) {
+                console.error("Error al borrar detalles:", errorDetalles);
+                alert(`Error al borrar productos asociados: ${errorDetalles.message}`);
+                return;
+            }
+
+            // 2. Borrar pedido principal
+            const { data, error: errorPedido } = await supabase
                 .from('pedidos')
                 .delete()
                 .eq('id', orderId)
-                .select(); // Esto devuelve la fila borrada si tuvo éxito y permisos
+                .select();
 
-            if (error) {
-                console.error("Error de Supabase al eliminar:", error);
-                alert(`Error al borrar: ${error.message}`);
+            if (errorPedido) {
+                console.error("Error al borrar pedido principal:", errorPedido);
+                alert(`Error al borrar pedido: ${errorPedido.message}`);
                 return;
             }
 
             if (!data || data.length === 0) {
-                console.warn("No se borró ninguna fila. Verifique permisos o si el pedido ya no existe.");
-                alert("Atención: El pedido no se pudo borrar. Puede que no tengas permisos para eliminarlo o ya haya sido borrado.");
+                alert("No se pudo borrar el pedido principal. Verifica si tienes permisos.");
                 return;
             }
 
-            console.log("Pedido eliminado correctamente de la base de datos.");
+            console.log("Pedido y detalles eliminados con éxito.");
             alert("Pedido eliminado con éxito.");
             cargarPedidos();
         } catch (error) {
             console.error("Excepción al eliminar pedido:", error);
-            alert("Ocurrió un error inesperado al intentar borrar.");
+            alert("Error inesperado.");
         }
     };
 
