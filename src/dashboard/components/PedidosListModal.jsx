@@ -178,10 +178,25 @@ const PedidosListModal = ({ isOpen, onClose }) => {
                                             {o.pago_estado?.toLowerCase() === 'pendiente' && (
                                                 <button onClick={() => confirmarPago(o.id)} style={{ padding: '4px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>Cobrado 💰</button>
                                             )}
+                                        </div>
+                                        <div style={{ marginTop: 'auto', textAlign: 'right' }}>
                                             <button 
                                                 onClick={() => eliminarPedido(o.id)} 
-                                                style={{ padding: '4px', backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', marginTop: '5px' }}
-                                            >Borrar 🗑️</button>
+                                                style={{ 
+                                                    background: 'none', 
+                                                    border: 'none', 
+                                                    color: '#9ca3af', 
+                                                    cursor: 'pointer', 
+                                                    fontSize: '0.9rem',
+                                                    padding: '2px',
+                                                    transition: 'color 0.2s'
+                                                }}
+                                                onMouseOver={(e) => e.target.style.color = '#ef4444'}
+                                                onMouseOut={(e) => e.target.style.color = '#9ca3af'}
+                                                title="Eliminar pedido permanentemente"
+                                            >
+                                                🗑️
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
