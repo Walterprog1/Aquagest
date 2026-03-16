@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS clientes (
     precio_especial NUMERIC DEFAULT 0,
     notas TEXT,
     lat DOUBLE PRECISION,
-    lng DOUBLE PRECISION
+    lng DOUBLE PRECISION,
+    alias_transferencia TEXT
 );
 
 -- TABLA DE VEHICULOS
