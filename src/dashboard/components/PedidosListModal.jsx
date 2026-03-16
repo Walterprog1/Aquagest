@@ -171,15 +171,15 @@ const PedidosListModal = ({ isOpen, onClose }) => {
                                         </div>
                                     </td>
                                     <td style={{ padding: '10px' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                            {o.estado?.toLowerCase() === 'pendiente' && (
-                                                <button onClick={() => confirmarEntrega(o.id)} style={{ padding: '4px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>Entregado 🚚</button>
-                                            )}
-                                            {o.pago_estado?.toLowerCase() === 'pendiente' && (
-                                                <button onClick={() => confirmarPago(o.id)} style={{ padding: '4px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>Cobrado 💰</button>
-                                            )}
-                                        </div>
-                                        <div style={{ marginTop: 'auto', textAlign: 'right' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: 1 }}>
+                                                {o.estado?.toLowerCase() === 'pendiente' && (
+                                                    <button onClick={() => confirmarEntrega(o.id)} style={{ padding: '4px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>Entregado 🚚</button>
+                                                )}
+                                                {o.pago_estado?.toLowerCase() === 'pendiente' && (
+                                                    <button onClick={() => confirmarPago(o.id)} style={{ padding: '4px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>Cobrado 💰</button>
+                                                )}
+                                            </div>
                                             <button 
                                                 onClick={() => eliminarPedido(o.id)} 
                                                 style={{ 
@@ -188,8 +188,11 @@ const PedidosListModal = ({ isOpen, onClose }) => {
                                                     color: '#9ca3af', 
                                                     cursor: 'pointer', 
                                                     fontSize: '0.9rem',
-                                                    padding: '2px',
-                                                    transition: 'color 0.2s'
+                                                    padding: '4px',
+                                                    transition: 'color 0.2s',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center'
                                                 }}
                                                 onMouseOver={(e) => e.target.style.color = '#ef4444'}
                                                 onMouseOut={(e) => e.target.style.color = '#9ca3af'}
