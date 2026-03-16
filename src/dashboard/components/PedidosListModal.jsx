@@ -66,6 +66,22 @@ const PedidosListModal = ({ isOpen, onClose }) => {
         }
     };
 
+    const eliminarPedido = async (orderId) => {
+        if (!confirm('¿Estás seguro de que deseas eliminar este pedido por completo? Esta acción no se puede deshacer.')) return;
+        try {
+            const { error } = await supabase
+                .from('pedidos')
+                .delete()
+                .eq('id', orderId);
+
+            if (error) throw error;
+            cargarPedidos();
+        } catch (error) {
+            console.error("Error eliminando pedido:", error);
+            alert("No se pudo eliminar el pedido.");
+        }
+    };
+
     // Lógica de filtrado en memoria
     const stats = {
         total: pedidos.length,
@@ -162,6 +178,10 @@ const PedidosListModal = ({ isOpen, onClose }) => {
                                             {o.pago_estado?.toLowerCase() === 'pendiente' && (
                                                 <button onClick={() => confirmarPago(o.id)} style={{ padding: '4px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>Cobrado 💰</button>
                                             )}
+                                            <button 
+                                                onClick={() => eliminarPedido(o.id)} 
+                                                style={{ padding: '4px', backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', marginTop: '5px' }}
+                                            >Borrar 🗑️</button>
                                         </div>
                                     </td>
                                 </tr>
