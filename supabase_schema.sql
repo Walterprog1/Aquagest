@@ -54,6 +54,8 @@ CREATE TABLE IF NOT EXISTS pedidos (
     fecha DATE DEFAULT CURRENT_DATE,
     total NUMERIC DEFAULT 0,
     medio_pago TEXT DEFAULT 'efectivo',
+    pago_estado TEXT DEFAULT 'pendiente',
+    pago_referencia_id TEXT,
     estado TEXT DEFAULT 'Pendiente',
     notas TEXT
 );
@@ -90,12 +92,18 @@ CREATE POLICY "Usuarios pueden insertar sus propios pedidos" ON pedidos FOR INSE
 CREATE POLICY "Usuarios pueden editar sus propios pedidos" ON pedidos FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Usuarios pueden borrar sus propios pedidos" ON pedidos FOR DELETE USING (auth.uid() = user_id);
 
--- Reglas para Detalles (Usamos el user_id del pedido relacionado)
+-- Reglas para Detalles
 CREATE POLICY "Usuarios pueden ver detalles de sus pedidos" ON detalles_pedido FOR SELECT 
 USING (EXISTS (SELECT 1 FROM pedidos WHERE pedidos.id = detalles_pedido.pedido_id AND pedidos.user_id = auth.uid()));
 
-CREATE POLICY "Usuarios pueden insertar detalles en sus pedidos" ON detalles_pedido FOR INSERT 
+CREATE POLICY "Usuarios pueden insertar detalles de sus pedidos" ON detalles_pedido FOR INSERT 
 WITH CHECK (EXISTS (SELECT 1 FROM pedidos WHERE pedidos.id = detalles_pedido.pedido_id AND pedidos.user_id = auth.uid()));
+
+CREATE POLICY "Usuarios pueden editar detalles de sus pedidos" ON detalles_pedido FOR UPDATE
+USING (EXISTS (SELECT 1 FROM pedidos WHERE pedidos.id = detalles_pedido.pedido_id AND pedidos.user_id = auth.uid()));
+
+CREATE POLICY "Usuarios pueden borrar detalles de sus pedidos" ON detalles_pedido FOR DELETE
+USING (EXISTS (SELECT 1 FROM pedidos WHERE pedidos.id = detalles_pedido.pedido_id AND pedidos.user_id = auth.uid()));
 
 -- Reglas para Stock
 CREATE POLICY "Usuarios pueden ver sus movimientos de stock" ON movimientos_stock FOR SELECT USING (auth.uid() = user_id);

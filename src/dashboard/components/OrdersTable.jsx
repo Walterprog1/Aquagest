@@ -6,32 +6,65 @@ const OrdersTable = () => {
     const [orders, setOrders] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    const [counts, setCounts] = useState({ Pendientes: 0, Entregados: 0, Anulados: 0 });
+
     useEffect(() => {
         cargarPedidos();
+        actualizarContadores();
     }, [activeTab]);
+
+    const actualizarContadores = async () => {
+        try {
+            const { data, error } = await supabase.from('pedidos').select('estado, pago_estado');
+            if (error) throw error;
+            
+            const p = data.filter(o => 
+                (o.estado?.toLowerCase() === 'pendiente') || 
+                (o.pago_estado?.toLowerCase() === 'pendiente')
+            ).length;
+            const e = data.filter(o => o.estado?.toLowerCase() === 'entregado').length;
+            const a = data.filter(o => o.estado?.toLowerCase() === 'anulado').length;
+            
+            setCounts({ Pendientes: p, Entregados: e, Anulados: a });
+        } catch (err) {
+            console.error("Error contadores:", err);
+        }
+    };
 
     const cargarPedidos = async () => {
         setIsLoading(true);
         try {
+            // Obtenemos todos los pedidos para filtrar en memoria de forma más robusta
             const { data, error } = await supabase
                 .from('pedidos')
                 .select(`
                     *,
-                    clientes (
-                        nombre,
-                        telefono,
-                        direccion
-                    ),
-                    detalles_pedido (
-                        producto,
-                        cantidad
-                    )
+                    clientes (nombre, telefono, direccion),
+                    detalles_pedido (producto, cantidad)
                 `)
-                .eq('estado', activeTab === 'Pendientes' ? 'Pendiente' : (activeTab === 'Entregados' ? 'Entregado' : 'Anulado'))
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setOrders(data || []);
+
+            const allOrders = data || [];
+
+            // Filtrado robusto según la pestaña activa
+            let filtered = [];
+            if (activeTab === 'Pendientes') {
+                filtered = allOrders.filter(o => 
+                    (o.estado?.toLowerCase() === 'pendiente') || 
+                    (o.pago_estado?.toLowerCase() === 'pendiente')
+                );
+            } else if (activeTab === 'Entregados') {
+                filtered = allOrders.filter(o => o.estado?.toLowerCase() === 'entregado');
+            } else if (activeTab === 'Anulados') {
+                filtered = allOrders.filter(o => o.estado?.toLowerCase() === 'anulado');
+            }
+
+            setOrders(filtered);
+        } catch (error) {
+            console.error("Error cargando pedidos:", error);
+            alert("Error al cargar pedidos: " + error.message);
         } finally {
             setIsLoading(false);
         }
@@ -48,6 +81,7 @@ const OrdersTable = () => {
 
             if (error) throw error;
             cargarPedidos();
+            actualizarContadores();
         } catch (error) {
             console.error("Error confirmando pago:", error);
             alert("No se pudo confirmar el pago.");
@@ -56,11 +90,24 @@ const OrdersTable = () => {
 
     return (
         <div className="orders-area">
-            <div className="orders-header">Pedidos</div>
+            <div className="orders-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Pedidos</span>
+                <button 
+                    onClick={() => { cargarPedidos(); actualizarContadores(); }} 
+                    style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem' }}
+                    title="Refrescar datos"
+                >🔄</button>
+            </div>
             <div className="orders-tabs">
-                <div className={`order-tab ${activeTab === 'Entregados' ? 'active' : ''}`} onClick={() => setActiveTab('Entregados')}>Entregados</div>
-                <div className={`order-tab ${activeTab === 'Pendientes' ? 'active' : ''}`} onClick={() => setActiveTab('Pendientes')}>Pendientes</div>
-                <div className={`order-tab ${activeTab === 'Anulados' ? 'active' : ''}`} onClick={() => setActiveTab('Anulados')}>Anulados</div>
+                <div className={`order-tab ${activeTab === 'Pendientes' ? 'active' : ''}`} onClick={() => setActiveTab('Pendientes')}>
+                    Pendientes ({counts.Pendientes})
+                </div>
+                <div className={`order-tab ${activeTab === 'Entregados' ? 'active' : ''}`} onClick={() => setActiveTab('Entregados')}>
+                    Entregados ({counts.Entregados})
+                </div>
+                <div className={`order-tab ${activeTab === 'Anulados' ? 'active' : ''}`} onClick={() => setActiveTab('Anulados')}>
+                    Anulados ({counts.Anulados})
+                </div>
             </div>
             
             {/* Desktop Table View */}
@@ -69,14 +116,10 @@ const OrdersTable = () => {
                     <thead>
                         <tr>
                             <th>Cod</th>
-                            <th>Actualizado</th>
                             <th>Creado</th>
-                            <th>Origen</th>
-                            <th>Responsable</th>
                             <th>Cliente</th>
                             <th>Total</th>
                             <th>Pago</th>
-                            <th>Teléfono</th>
                             <th>Dirección</th>
                             <th>Ref/Notas</th>
                             <th>Productos</th>
@@ -84,14 +127,11 @@ const OrdersTable = () => {
                     </thead>
                     <tbody>
                         {isLoading ? (
-                            <tr><td colSpan="12" style={{ textAlign: 'center', padding: '2rem' }}>Cargando pedidos...</td></tr>
+                            <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>Cargando pedidos...</td></tr>
                         ) : orders.length > 0 ? orders.map(order => (
                             <tr key={order.id}>
                                 <td style={{ fontSize: '0.7rem' }}>{order.id.split('-')[0]}</td>
                                 <td style={{ fontSize: '0.75rem' }}>{new Date(order.created_at).toLocaleString()}</td>
-                                <td style={{ fontSize: '0.75rem' }}>{new Date(order.fecha).toLocaleDateString()}</td>
-                                <td><span style={{ backgroundColor: '#10b981', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>Mostrador</span></td>
-                                <td style={{ fontSize: '0.75rem' }}>Administrador</td>
                                 <td>{order.clientes?.nombre || 'Consumidor Final'}</td>
                                 <td style={{ fontWeight: '600' }}>${order.total}</td>
                                 <td>
@@ -109,30 +149,26 @@ const OrdersTable = () => {
                                         {order.pago_estado !== 'pagado' && (
                                             <button 
                                                 onClick={() => confirmarPago(order.id)}
-                                                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8rem', padding: '0 4px' }}
-                                                title="Marcar como pagado"
-                                            >
-                                                ✅
-                                            </button>
+                                                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem' }}
+                                            >✅</button>
                                         )}
                                     </div>
                                 </td>
-                                <td>{order.clientes?.telefono || '-'}</td>
-                                <td style={{ fontSize: '0.7rem', maxWidth: '150px' }}>{order.clientes?.direccion || '-'}</td>
+                                <td style={{ fontSize: '0.7rem' }}>{order.clientes?.direccion || '-'}</td>
                                 <td style={{ fontSize: '0.7rem' }}>{order.notas}</td>
-                                <td>
+                                <td style={{ fontSize: '0.7rem' }}>
                                     {order.detalles_pedido?.map((d, i) => (
-                                        <div key={i} style={{ fontSize: '0.7rem' }}>{d.cantidad}x {d.producto}</div>
+                                        <div key={i}>{d.cantidad}x {d.producto}</div>
                                     ))}
                                 </td>
                             </tr>
-                        )) : <tr><td colSpan="12" style={{ textAlign: 'center', padding: '2rem' }}>No hay pedidos {activeTab.toLowerCase()}</td></tr>}
+                        )) : <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>No hay pedidos {activeTab.toLowerCase()}</td></tr>}
                     </tbody>
                 </table>
             </div>
 
-            {/* Mobile Card View (Visible via CSS) */}
-            <div className="mobile-orders-view" style={{ display: 'none' }}>
+            {/* Mobile Card View (Visible via CSS Media Query) */}
+            <div className="mobile-orders-view">
                 {orders.map(order => (
                     <div key={order.id} style={{
                         padding: '1rem',
@@ -164,16 +200,21 @@ const OrdersTable = () => {
                                     </span>
                                 ))}
                             </div>
-                            <span style={{ 
-                                padding: '2px 8px', 
-                                borderRadius: '12px', 
-                                fontSize: '0.6rem',
-                                fontWeight: '700',
-                                backgroundColor: order.pago_estado === 'pagado' ? '#d1fae5' : (order.medio_pago === 'transferencia' ? '#eff6ff' : '#fef3c7'),
-                                color: order.pago_estado === 'pagado' ? '#065f46' : (order.medio_pago === 'transferencia' ? '#1e40af' : '#92400e')
-                            }}>
-                                {order.pago_estado === 'pagado' ? 'PAGADO' : (order.medio_pago === 'transferencia' ? 'TRANSF. PEND.' : 'PENDIENTE')}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ 
+                                    padding: '2px 8px', 
+                                    borderRadius: '12px', 
+                                    fontSize: '0.6rem',
+                                    fontWeight: '700',
+                                    backgroundColor: order.pago_estado === 'pagado' ? '#d1fae5' : (order.medio_pago === 'transferencia' ? '#eff6ff' : '#fef3c7'),
+                                    color: order.pago_estado === 'pagado' ? '#065f46' : (order.medio_pago === 'transferencia' ? '#1e40af' : '#92400e')
+                                }}>
+                                    {order.pago_estado === 'pagado' ? 'PAGADO' : (order.medio_pago === 'transferencia' ? 'TRANSF. PEND.' : 'PENDIENTE')}
+                                </span>
+                                {order.pago_estado !== 'pagado' && (
+                                    <button onClick={() => confirmarPago(order.id)} style={{ border: 'none', background: 'none' }}>✅</button>
+                                )}
+                            </div>
                         </div>
                         {order.notas && (
                             <div style={{ fontSize: '0.7rem', color: '#888', fontStyle: 'italic', marginTop: '4px' }}>

@@ -31,7 +31,7 @@ const StatCard = ({ title, value, colorClass, linkLabel, onClick, onSecondaryCli
     </div>
 );
 
-const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuarios }) => {
+const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuarios, onOpenPendientes }) => {
     const [stats, setStats] = useState({
         pedidosPendientes: 0,
         clientesRegistrados: 0,
@@ -46,29 +46,36 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
             try {
                 const hoy = new Date().toISOString().split('T')[0];
                 
-                // Realizamos consultas en paralelo para mejor rendimiento
                 const [
-                    { count: pendientes },
+                    { data: pedidos },
                     { count: clientes },
                     { count: vehiculos },
-                    { count: zonas },
-                    { data: pedidosHoy }
+                    { count: zonas }
                 ] = await Promise.all([
-                    supabase.from('pedidos').select('*', { count: 'exact', head: true }).eq('estado', 'Pendiente'),
+                    supabase.from('pedidos').select('total, fecha, estado, pago_estado'),
                     supabase.from('clientes').select('*', { count: 'exact', head: true }),
                     supabase.from('vehiculos').select('*', { count: 'exact', head: true }),
-                    supabase.from('zonas_reparto').select('*', { count: 'exact', head: true }),
-                    supabase.from('pedidos').select('total').eq('fecha', hoy).neq('estado', 'Anulado')
+                    supabase.from('zonas_reparto').select('*', { count: 'exact', head: true })
                 ]);
 
-                const income = pedidosHoy?.reduce((acc, curr) => acc + (curr.total || 0), 0) || 0;
+                // Cálculo de ingresos hoy
+                const income = pedidos
+                    ?.filter(o => o.fecha === hoy && o.estado !== 'Anulado')
+                    .reduce((acc, curr) => acc + (curr.total || 0), 0) || 0;
+
+                // Cálculo de pedidos pendientes (No entregados O No pagados)
+                const pendientes = pedidos
+                    ?.filter(o => 
+                        (o.estado?.toLowerCase() === 'pendiente') || 
+                        (o.pago_estado?.toLowerCase() === 'pendiente')
+                    ).length || 0;
 
                 setStats({
-                    pedidosPendientes: pendientes || 0,
+                    pedidosPendientes: pendientes,
                     clientesRegistrados: clientes || 0,
                     vehiculosRegistrados: vehiculos || 0,
                     zonasRegistradas: zonas || 0,
-                    usuariosRegistrados: 1, // Por ahora el admin actual
+                    usuariosRegistrados: 1,
                     ingresoDia: income
                 });
             } catch (error) {
@@ -84,11 +91,11 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
     return (
         <div className="stats-grid">
             <StatCard
-                title="Pedidos Pendientes"
+                title="Gestión de Pedidos"
                 value={stats.pedidosPendientes}
                 colorClass="dark-blue"
-                linkLabel={`Ingresos Hoy: $${stats.ingresoDia.toFixed(0)}`}
-                onClick={() => { }}
+                linkLabel="Ver Listado Integral"
+                onClick={onOpenPendientes}
             />
             <StatCard
                 title="Clientes y Staff"
