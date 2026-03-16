@@ -67,57 +67,46 @@ const PedidosListModal = ({ isOpen, onClose }) => {
     };
 
     const eliminarPedido = async (orderId) => {
-        if (!confirm('¿Estás seguro de que deseas eliminar este pedido por completo? Esta acción no se puede deshacer.')) return;
+        if (!confirm('¿Estás seguro de que deseas eliminar este pedido?')) return;
         try {
             const { data: { user } } = await supabase.auth.getUser();
-            const pedidoABorrar = pedidos.find(p => p.id === orderId);
             
-            console.log("DEPURACIÓN DE BORRADO:");
-            console.log("- Mi ID de usuario (Auth):", user?.id);
-            console.log("- Dueño del pedido (DB):", pedidoABorrar?.user_id);
-            console.log("- Pedido ID:", orderId);
+            // Diagnóstico: ¿Podemos al menos actualizarlo?
+            const { error: errorUpdate } = await supabase
+                .from('pedidos')
+                .update({ notas: 'Intentando borrar...' })
+                .eq('id', orderId)
+                .select();
 
-            if (user?.id !== pedidoABorrar?.user_id) {
-                console.warn("DISCREPANCIA DE DUEÑO DETECTADA");
-            }
-
-            // 1. Borrar detalles primero
-            const { error: errorDetalles, count: countDetalles } = await supabase
-                .from('detalles_pedido')
-                .delete({ count: 'exact' })
-                .eq('pedido_id', orderId);
-
-            if (errorDetalles) {
-                console.error("Error al borrar detalles:", errorDetalles);
-                alert(`Error al borrar productos: ${errorDetalles.message}`);
+            if (errorUpdate) {
+                console.error("Fallo de UPDATE:", errorUpdate);
+                alert("No tienes permisos ni siquiera para editar este pedido. RLS está bloqueando todo.");
                 return;
             }
-            console.log("Detalles eliminados:", countDetalles);
 
-            // 2. Borrar pedido principal
+            console.log("UPDATE exitoso, procediendo a borrar...");
+
+            // 1. Borrar detalles
+            await supabase.from('detalles_pedido').delete().eq('pedido_id', orderId);
+
+            // 2. Borrar pedido
             const { data, error: errorPedido } = await supabase
                 .from('pedidos')
                 .delete()
                 .eq('id', orderId)
                 .select();
 
-            if (errorPedido) {
-                console.error("Error al borrar pedido principal:", errorPedido);
-                alert(`Error al borrar pedido: ${errorPedido.message}`);
+            if (errorPedido || !data || data.length === 0) {
+                console.error("Fallo de DELETE tras UPDATE exitoso:", errorPedido);
+                alert("Puedes editar el pedido pero NO borrarlo. Hay una restricción de seguridad en la base de datos.");
                 return;
             }
 
-            if (!data || data.length === 0) {
-                alert(`No se pudo borrar. \nMi ID: ${user?.id?.substring(0,8)}... \nDueño: ${pedidoABorrar?.user_id?.substring(0,8)}...`);
-                return;
-            }
-
-            console.log("Borrado completo exitoso.");
             alert("Pedido eliminado con éxito.");
             cargarPedidos();
         } catch (error) {
-            console.error("Excepción en eliminarPedido:", error);
-            alert("Error inesperado en el sistema.");
+            console.error("Error:", error);
+            alert("Error inesperado.");
         }
     };
 
