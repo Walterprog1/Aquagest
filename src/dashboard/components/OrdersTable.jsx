@@ -83,7 +83,7 @@ const OrdersTable = () => {
             if (error) throw error;
 
             if (!data || data.length === 0) {
-                alert("No se pudo confirmar el pago. Verifique permisos.");
+                alert("No se pudo actualizar el pago. Por favor, refresca la página.");
                 return;
             }
 

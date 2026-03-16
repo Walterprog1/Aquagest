@@ -37,26 +37,19 @@ const PedidosListModal = ({ isOpen, onClose }) => {
     const confirmarPago = async (orderId) => {
         if (!confirm('¿Confirmas que has recibido el pago de este pedido?')) return;
         try {
-            console.log("Intentando cobrar pedido manual:", orderId);
             const { data, error } = await supabase
                 .from('pedidos')
                 .update({ pago_estado: 'pagado' })
                 .eq('id', orderId)
                 .select();
 
-            if (error) {
-                console.error("Error confirmando pago:", error);
-                alert(`Error al cobrar: ${error.message}`);
-                return;
-            }
+            if (error) throw error;
 
             if (!data || data.length === 0) {
-                alert("No se pudo marcar como cobrado. Verifica si tienes permisos o si el pedido ya fue borrado.");
+                alert("No se pudo actualizar el pago. Por favor, refresca la página.");
                 return;
             }
 
-            console.log("Cobro manual exitoso en DB");
-            alert("¡Pedido marcado como cobrado con éxito!");
             cargarPedidos();
         } catch (error) {
             console.error("Error confirmando pago:", error);
