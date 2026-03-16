@@ -69,19 +69,30 @@ const PedidosListModal = ({ isOpen, onClose }) => {
     const eliminarPedido = async (orderId) => {
         if (!confirm('¿Estás seguro de que deseas eliminar este pedido por completo? Esta acción no se puede deshacer.')) return;
         try {
-            console.log("Iniciando eliminación manual del pedido:", orderId);
+            const { data: { user } } = await supabase.auth.getUser();
+            const pedidoABorrar = pedidos.find(p => p.id === orderId);
             
-            // 1. Borrar detalles primero para evitar conflictos de RLS con ON DELETE CASCADE
-            const { error: errorDetalles } = await supabase
+            console.log("DEPURACIÓN DE BORRADO:");
+            console.log("- Mi ID de usuario (Auth):", user?.id);
+            console.log("- Dueño del pedido (DB):", pedidoABorrar?.user_id);
+            console.log("- Pedido ID:", orderId);
+
+            if (user?.id !== pedidoABorrar?.user_id) {
+                console.warn("DISCREPANCIA DE DUEÑO DETECTADA");
+            }
+
+            // 1. Borrar detalles primero
+            const { error: errorDetalles, count: countDetalles } = await supabase
                 .from('detalles_pedido')
-                .delete()
+                .delete({ count: 'exact' })
                 .eq('pedido_id', orderId);
 
             if (errorDetalles) {
                 console.error("Error al borrar detalles:", errorDetalles);
-                alert(`Error al borrar productos asociados: ${errorDetalles.message}`);
+                alert(`Error al borrar productos: ${errorDetalles.message}`);
                 return;
             }
+            console.log("Detalles eliminados:", countDetalles);
 
             // 2. Borrar pedido principal
             const { data, error: errorPedido } = await supabase
@@ -97,16 +108,16 @@ const PedidosListModal = ({ isOpen, onClose }) => {
             }
 
             if (!data || data.length === 0) {
-                alert("No se pudo borrar el pedido principal. Verifica si tienes permisos.");
+                alert(`No se pudo borrar. \nMi ID: ${user?.id?.substring(0,8)}... \nDueño: ${pedidoABorrar?.user_id?.substring(0,8)}...`);
                 return;
             }
 
-            console.log("Pedido y detalles eliminados con éxito.");
+            console.log("Borrado completo exitoso.");
             alert("Pedido eliminado con éxito.");
             cargarPedidos();
         } catch (error) {
-            console.error("Excepción al eliminar pedido:", error);
-            alert("Error inesperado.");
+            console.error("Excepción en eliminarPedido:", error);
+            alert("Error inesperado en el sistema.");
         }
     };
 
