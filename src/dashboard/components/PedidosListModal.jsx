@@ -69,16 +69,24 @@ const PedidosListModal = ({ isOpen, onClose }) => {
     const eliminarPedido = async (orderId) => {
         if (!confirm('¿Estás seguro de que deseas eliminar este pedido por completo? Esta acción no se puede deshacer.')) return;
         try {
-            const { error } = await supabase
+            console.log("Intentando eliminar pedido ID:", orderId);
+            const { error, status } = await supabase
                 .from('pedidos')
                 .delete()
                 .eq('id', orderId);
 
-            if (error) throw error;
+            if (error) {
+                console.error("Error de Supabase al eliminar:", error);
+                alert(`Error al borrar: ${error.message} (Código: ${error.code})`);
+                return;
+            }
+
+            console.log("Resultado de eliminación - Status:", status);
+            alert("Pedido eliminado con éxito.");
             cargarPedidos();
         } catch (error) {
-            console.error("Error eliminando pedido:", error);
-            alert("No se pudo eliminar el pedido.");
+            console.error("Excepción al eliminar pedido:", error);
+            alert("Ocurrió un error inesperado al intentar borrar.");
         }
     };
 
