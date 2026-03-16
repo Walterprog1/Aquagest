@@ -70,18 +70,25 @@ const PedidosListModal = ({ isOpen, onClose }) => {
         if (!confirm('¿Estás seguro de que deseas eliminar este pedido por completo? Esta acción no se puede deshacer.')) return;
         try {
             console.log("Intentando eliminar pedido ID:", orderId);
-            const { error, status } = await supabase
+            const { data, error } = await supabase
                 .from('pedidos')
                 .delete()
-                .eq('id', orderId);
+                .eq('id', orderId)
+                .select(); // Esto devuelve la fila borrada si tuvo éxito y permisos
 
             if (error) {
                 console.error("Error de Supabase al eliminar:", error);
-                alert(`Error al borrar: ${error.message} (Código: ${error.code})`);
+                alert(`Error al borrar: ${error.message}`);
                 return;
             }
 
-            console.log("Resultado de eliminación - Status:", status);
+            if (!data || data.length === 0) {
+                console.warn("No se borró ninguna fila. Verifique permisos o si el pedido ya no existe.");
+                alert("Atención: El pedido no se pudo borrar. Puede que no tengas permisos para eliminarlo o ya haya sido borrado.");
+                return;
+            }
+
+            console.log("Pedido eliminado correctamente de la base de datos.");
             alert("Pedido eliminado con éxito.");
             cargarPedidos();
         } catch (error) {
