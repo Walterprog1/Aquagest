@@ -123,7 +123,14 @@ const ClientesListModal = ({ isOpen, onClose }) => {
                         <tbody>
                             {filteredClientes.length > 0 ? filteredClientes.map(cliente => (
                                 <tr key={cliente.id}>
-                                    <td style={tdStyle}><strong>{cliente.nombre}</strong></td>
+                                    <td style={tdStyle}>
+                                        <strong>{cliente.nombre}</strong>
+                                        {cliente.alias_transferencia && (
+                                            <div style={{ fontSize: '0.7rem', color: '#c2410c', background: '#fff7ed', padding: '2px 4px', borderRadius: '4px', marginTop: '4px', display: 'inline-block' }}>
+                                                ID Pago: {cliente.alias_transferencia}
+                                            </div>
+                                        )}
+                                    </td>
                                     <td style={tdStyle}>
                                         {cliente.direccion}
                                         {cliente.localidad && <div style={{ fontSize: '0.75rem', color: 'var(--text-gray)' }}>{cliente.localidad}</div>}

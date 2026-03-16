@@ -6,6 +6,7 @@ const ClienteFormModal = ({ isOpen, onClose, clienteAEditar }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         nombre: '',
+        alias_transferencia: '',
         direccion: '',
         localidad: '',
         telefono: '',
@@ -23,6 +24,7 @@ const ClienteFormModal = ({ isOpen, onClose, clienteAEditar }) => {
         if (isOpen && clienteAEditar) {
             setFormData({
                 nombre: clienteAEditar.nombre || '',
+                alias_transferencia: clienteAEditar.alias_transferencia || '',
                 direccion: clienteAEditar.direccion || '',
                 localidad: clienteAEditar.localidad || '',
                 telefono: clienteAEditar.telefono || '',
@@ -37,6 +39,7 @@ const ClienteFormModal = ({ isOpen, onClose, clienteAEditar }) => {
         } else if (isOpen && !clienteAEditar) {
             setFormData({
                 nombre: '',
+                alias_transferencia: '',
                 direccion: '',
                 localidad: '',
                 telefono: '',
@@ -98,6 +101,7 @@ const ClienteFormModal = ({ isOpen, onClose, clienteAEditar }) => {
 
             const clientData = {
                 nombre: formData.nombre,
+                alias_transferencia: formData.alias_transferencia,
                 direccion: formData.direccion,
                 localidad: formData.localidad,
                 telefono: formData.telefono,
@@ -157,6 +161,12 @@ const ClienteFormModal = ({ isOpen, onClose, clienteAEditar }) => {
                 <div>
                     <label style={labelStyle}>Nombre / Razón Social *</label>
                     <input required style={inputStyle} type="text" name="nombre" value={formData.nombre} onChange={handleChange} placeholder="Ej. Juan Pérez" />
+                </div>
+
+                <div style={{ backgroundColor: '#fff7ed', padding: '0.75rem', borderRadius: '4px', marginBottom: '1rem', border: '1px solid #ffedd1' }}>
+                    <label style={{ ...labelStyle, marginBottom: '4px', color: '#9a3412' }}>🔍 Alias para Transferencias</label>
+                    <input style={{ ...inputStyle, marginBottom: 0 }} type="text" name="alias_transferencia" value={formData.alias_transferencia} onChange={handleChange} placeholder="Ej. MARIO ALBERTO GOMEZ (Tal cual sale en el banco)" />
+                    <p style={{ fontSize: '0.65rem', color: '#c2410c', marginTop: '4px' }}>💡 Sirve para registrar el pago automático cuando te transfieran.</p>
                 </div>
 
                 <div>
