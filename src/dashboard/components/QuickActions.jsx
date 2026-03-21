@@ -8,8 +8,6 @@ import VehiculoFormModal from './VehiculoFormModal';
 import OperacionFormModal from './OperacionFormModal';
 import UsuarioFormModal from './UsuarioFormModal';
 import ResumenFormModal from './ResumenFormModal';
-import EnvaseFormModal from './EnvaseFormModal';
-import PaqueteFormModal from './PaqueteFormModal';
 
 const ActionButton = ({ icon, label, onClick }) => (
     <button className="action-btn" onClick={onClick}>
@@ -28,8 +26,6 @@ const QuickActions = () => {
     const [isOperacionModalOpen, setIsOperacionModalOpen] = useState(false);
     const [isUsuarioModalOpen, setIsUsuarioModalOpen] = useState(false);
     const [isResumenModalOpen, setIsResumenModalOpen] = useState(false);
-    const [isEnvaseModalOpen, setIsEnvaseModalOpen] = useState(false);
-    const [isPaqueteModalOpen, setIsPaqueteModalOpen] = useState(false);
 
     const actions = [
         { icon: '👥', label: 'Agregar Cliente' },
@@ -40,9 +36,7 @@ const QuickActions = () => {
         { icon: '💵', label: 'Agregar Operación' },
         { icon: '👤', label: 'Agregar Usuario' },
         { icon: '📊', label: 'Agregar Resumen' },
-        { icon: '💧', label: 'Agregar Envase' },
-        { icon: '📦', label: 'Agregar Paquete' },
-        { icon: '📈', label: 'Agregar Stock' },
+        { icon: '📈', label: 'Agregar Stock' }
     ];
 
     return (
@@ -60,8 +54,6 @@ const QuickActions = () => {
                     if (action.label === 'Agregar Operación') clickHandler = () => setIsOperacionModalOpen(true);
                     if (action.label === 'Agregar Usuario') clickHandler = () => setIsUsuarioModalOpen(true);
                     if (action.label === 'Agregar Resumen') clickHandler = () => setIsResumenModalOpen(true);
-                    if (action.label === 'Agregar Envase') clickHandler = () => setIsEnvaseModalOpen(true);
-                    if (action.label === 'Agregar Paquete') clickHandler = () => setIsPaqueteModalOpen(true);
 
                     return (
                         <ActionButton
@@ -117,16 +109,6 @@ const QuickActions = () => {
             <ResumenFormModal
                 isOpen={isResumenModalOpen}
                 onClose={() => setIsResumenModalOpen(false)}
-            />
-
-            <EnvaseFormModal
-                isOpen={isEnvaseModalOpen}
-                onClose={() => setIsEnvaseModalOpen(false)}
-            />
-
-            <PaqueteFormModal
-                isOpen={isPaqueteModalOpen}
-                onClose={() => setIsPaqueteModalOpen(false)}
             />
         </div>
     );
