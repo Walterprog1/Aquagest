@@ -109,3 +109,34 @@ USING (EXISTS (SELECT 1 FROM pedidos WHERE pedidos.id = detalles_pedido.pedido_i
 -- Reglas para Stock
 CREATE POLICY "Usuarios pueden ver sus movimientos de stock" ON movimientos_stock FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Usuarios pueden insertar sus movimientos de stock" ON movimientos_stock FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Tabla para depurar el Webhook
+CREATE TABLE IF NOT EXISTS logs_webhook (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    payload JSONB,
+    resultado TEXT,
+    exito BOOLEAN DEFAULT false
+);
+
+ALTER TABLE logs_webhook ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Usuarios pueden ver sus propios logs" ON logs_webhook FOR SELECT USING (true);
+
+-- TABLA DE DISPENSERS
+CREATE TABLE IF NOT EXISTS dispensers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    modelo TEXT NOT NULL,
+    numero_serie TEXT,
+    estado TEXT DEFAULT 'disponible', -- 'disponible', 'instalado', 'mantenimiento', 'baja'
+    cliente_id UUID REFERENCES clientes(id) ON DELETE SET NULL,
+    fecha_instalacion DATE,
+    notas TEXT
+);
+
+ALTER TABLE dispensers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Usuarios pueden ver sus propios dispensers" ON dispensers FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Usuarios pueden insertar sus propios dispensers" ON dispensers FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Usuarios pueden editar sus propios dispensers" ON dispensers FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Usuarios pueden borrar sus propios dispensers" ON dispensers FOR DELETE USING (auth.uid() = user_id);

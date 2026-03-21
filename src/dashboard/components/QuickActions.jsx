@@ -8,6 +8,7 @@ import VehiculoFormModal from './VehiculoFormModal';
 import OperacionFormModal from './OperacionFormModal';
 import UsuarioFormModal from './UsuarioFormModal';
 import ResumenFormModal from './ResumenFormModal';
+import DispenserFormModal from './DispenserFormModal';
 
 const ActionButton = ({ icon, label, onClick }) => (
     <button className="action-btn" onClick={onClick}>
@@ -26,6 +27,7 @@ const QuickActions = () => {
     const [isOperacionModalOpen, setIsOperacionModalOpen] = useState(false);
     const [isUsuarioModalOpen, setIsUsuarioModalOpen] = useState(false);
     const [isResumenModalOpen, setIsResumenModalOpen] = useState(false);
+    const [isDispenserModalOpen, setIsDispenserModalOpen] = useState(false);
 
     const actions = [
         { icon: '👥', label: 'Agregar Cliente' },
@@ -36,7 +38,8 @@ const QuickActions = () => {
         { icon: '💵', label: 'Agregar Operación' },
         { icon: '👤', label: 'Agregar Usuario' },
         { icon: '📊', label: 'Agregar Resumen' },
-        { icon: '📈', label: 'Agregar Stock' }
+        { icon: '📈', label: 'Agregar Stock' },
+        { icon: '🚰', label: 'Agregar Dispenser' },
     ];
 
     return (
@@ -54,6 +57,7 @@ const QuickActions = () => {
                     if (action.label === 'Agregar Operación') clickHandler = () => setIsOperacionModalOpen(true);
                     if (action.label === 'Agregar Usuario') clickHandler = () => setIsUsuarioModalOpen(true);
                     if (action.label === 'Agregar Resumen') clickHandler = () => setIsResumenModalOpen(true);
+                    if (action.label === 'Agregar Dispenser') clickHandler = () => setIsDispenserModalOpen(true);
 
                     return (
                         <ActionButton
@@ -109,6 +113,11 @@ const QuickActions = () => {
             <ResumenFormModal
                 isOpen={isResumenModalOpen}
                 onClose={() => setIsResumenModalOpen(false)}
+            />
+
+            <DispenserFormModal
+                isOpen={isDispenserModalOpen}
+                onClose={() => setIsDispenserModalOpen(false)}
             />
         </div>
     );

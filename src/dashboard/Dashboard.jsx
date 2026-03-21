@@ -11,6 +11,7 @@ import VehiculosListModal from './components/VehiculosListModal';
 import ZonasListModal from './components/ZonasListModal';
 import UsuariosListModal from './components/UsuariosListModal';
 import PedidosListModal from './components/PedidosListModal';
+import DispensersListModal from './components/DispensersListModal';
 
 const Dashboard = ({ user, onLogout }) => {
     const [showClientes, setShowClientes] = React.useState(false);
@@ -18,6 +19,7 @@ const Dashboard = ({ user, onLogout }) => {
     const [showZonas, setShowZonas] = React.useState(false);
     const [showUsuarios, setShowUsuarios] = React.useState(false);
     const [showPedidos, setShowPedidos] = React.useState(false);
+    const [showDispensers, setShowDispensers] = React.useState(false);
 
     return (
         <div className="dashboard-container">
@@ -36,6 +38,7 @@ const Dashboard = ({ user, onLogout }) => {
                     onOpenZonas={() => setShowZonas(true)}
                     onOpenUsuarios={() => setShowUsuarios(true)}
                     onOpenPendientes={() => setShowPedidos(true)}
+                    onOpenDispensers={() => setShowDispensers(true)}
                 />
 
                 <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
@@ -80,6 +83,10 @@ const Dashboard = ({ user, onLogout }) => {
             <PedidosListModal
                 isOpen={showPedidos}
                 onClose={() => setShowPedidos(false)}
+            />
+            <DispensersListModal
+                isOpen={showDispensers}
+                onClose={() => setShowDispensers(false)}
             />
         </div>
     );
