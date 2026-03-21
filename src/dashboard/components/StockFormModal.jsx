@@ -10,7 +10,7 @@ const StockFormModal = ({ isOpen, onClose }) => {
         cantidad: 0,
         movimiento: 'ingreso',
         motivo: '',
-        notes: ''
+        notas: ''
     });
 
     const handleChange = (e) => {

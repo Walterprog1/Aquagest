@@ -19,40 +19,42 @@ const ClienteFormModal = ({ isOpen, onClose, clienteAEditar }) => {
         lng: ''
     });
 
-    // Cargar datos si estamos editando
+    // Cargar datos al ABRIR el modal (Solo cuando isOpen cambia a true)
     React.useEffect(() => {
-        if (isOpen && clienteAEditar) {
-            setFormData({
-                nombre: clienteAEditar.nombre || '',
-                alias_transferencia: clienteAEditar.alias_transferencia || '',
-                direccion: clienteAEditar.direccion || '',
-                localidad: clienteAEditar.localidad || '',
-                telefono: clienteAEditar.telefono || '',
-                whatsapp: clienteAEditar.whatsapp || '',
-                tipo: clienteAEditar.tipo || 'residencial',
-                email: clienteAEditar.email || '',
-                precioEspecialBidon20L: clienteAEditar.precio_especial || '',
-                notas: clienteAEditar.notas || '',
-                lat: clienteAEditar.lat || '',
-                lng: clienteAEditar.lng || ''
-            });
-        } else if (isOpen && !clienteAEditar) {
-            setFormData({
-                nombre: '',
-                alias_transferencia: '',
-                direccion: '',
-                localidad: '',
-                telefono: '',
-                whatsapp: '',
-                tipo: 'residencial',
-                email: '',
-                precioEspecialBidon20L: '',
-                notas: '',
-                lat: '',
-                lng: ''
-            });
+        if (isOpen) {
+            if (clienteAEditar) {
+                setFormData({
+                    nombre: clienteAEditar.nombre || '',
+                    alias_transferencia: clienteAEditar.alias_transferencia || '',
+                    direccion: clienteAEditar.direccion || '',
+                    localidad: clienteAEditar.localidad || '',
+                    telefono: clienteAEditar.telefono || '',
+                    whatsapp: clienteAEditar.whatsapp || '',
+                    tipo: clienteAEditar.tipo || 'residencial',
+                    email: clienteAEditar.email || '',
+                    precioEspecialBidon20L: clienteAEditar.precio_especial || '',
+                    notas: clienteAEditar.notas || '',
+                    lat: clienteAEditar.lat || '',
+                    lng: clienteAEditar.lng || ''
+                });
+            } else {
+                setFormData({
+                    nombre: '',
+                    alias_transferencia: '',
+                    direccion: '',
+                    localidad: '',
+                    telefono: '',
+                    whatsapp: '',
+                    tipo: 'residencial',
+                    email: '',
+                    precioEspecialBidon20L: '',
+                    notas: '',
+                    lat: '',
+                    lng: ''
+                });
+            }
         }
-    }, [isOpen, clienteAEditar]);
+    }, [isOpen]); // ELIMINAMOS clienteAEditar de las dependencias para que no se resetee
 
     const obtenerUbicacion = () => {
         if (!navigator.geolocation) {
@@ -169,6 +171,17 @@ const ClienteFormModal = ({ isOpen, onClose, clienteAEditar }) => {
                     <p style={{ fontSize: '0.65rem', color: '#c2410c', marginTop: '4px' }}>💡 Sirve para registrar el pago automático cuando te transfieran.</p>
                 </div>
 
+                <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ ...labelStyle, color: 'var(--primary-blue)' }}>📝 Notas (Opcional)</label>
+                    <textarea 
+                        style={{ ...inputStyle, resize: 'vertical', minHeight: '80px', backgroundColor: 'white', color: 'black' }} 
+                        name="notas" 
+                        value={formData.notas} 
+                        onChange={handleChange} 
+                        placeholder="Instrucciones de entrega, horarios, etc."
+                    ></textarea>
+                </div>
+
                 <div>
                     <label style={labelStyle}>Dirección *</label>
                     <input required style={inputStyle} type="text" name="direccion" value={formData.direccion} onChange={handleChange} placeholder="Ej. Calle Principal 123" />
@@ -265,11 +278,7 @@ const ClienteFormModal = ({ isOpen, onClose, clienteAEditar }) => {
                     </div>
                 </div>
 
-                <div>
-                    <label style={labelStyle}>Notas (Opcional)</label>
-                    <textarea style={{ ...inputStyle, resize: 'none' }} rows="3" name="notes" value={formData.notas} onChange={handleChange} placeholder="Instrucciones de entrega, horarios, etc."></textarea>
-                </div>
-
+,ReplacementContent:
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
                     <button type="button" onClick={onClose} style={{
                         padding: '0.75rem 1.5rem',
