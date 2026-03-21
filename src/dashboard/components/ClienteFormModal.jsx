@@ -268,7 +268,11 @@ const ClienteFormModal = ({ isOpen, onClose, clienteAEditar }) => {
                     </div>
                 </div>
 
-,ReplacementContent:
+                <div>
+                    <label style={labelStyle}>Notas (Opcional)</label>
+                    <textarea style={{ ...inputStyle, resize: 'none' }} rows="3" name="notas" value={formData.notas} onChange={handleChange} placeholder="Instrucciones de entrega, horarios, etc."></textarea>
+                </div>
+
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
                     <button type="button" onClick={onClose} style={{
                         padding: '0.75rem 1.5rem',
