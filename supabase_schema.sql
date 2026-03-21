@@ -58,7 +58,8 @@ CREATE TABLE IF NOT EXISTS pedidos (
     pago_estado TEXT DEFAULT 'pendiente',
     pago_referencia_id TEXT,
     estado TEXT DEFAULT 'Pendiente',
-    notas TEXT
+    notas TEXT,
+    reparto_id UUID REFERENCES repartos(id) ON DELETE SET NULL
 );
 
 -- TABLA DE DETALLES DE PEDIDO
@@ -140,3 +141,40 @@ CREATE POLICY "Usuarios pueden ver sus propios dispensers" ON dispensers FOR SEL
 CREATE POLICY "Usuarios pueden insertar sus propios dispensers" ON dispensers FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Usuarios pueden editar sus propios dispensers" ON dispensers FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Usuarios pueden borrar sus propios dispensers" ON dispensers FOR DELETE USING (auth.uid() = user_id);
+
+-- TABLA DE PERFILES DE USUARIO (Metadata extra para Auth)
+CREATE TABLE IF NOT EXISTS perfiles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- Opcional: si usamos Auth real
+    nombre TEXT NOT NULL,
+    apellido TEXT NOT NULL,
+    dni TEXT,
+    email TEXT UNIQUE NOT NULL,
+    telefono TEXT,
+    rol TEXT DEFAULT 'repartidor', -- 'administrador', 'repartidor', 'atencion'
+    estado TEXT DEFAULT 'activo'
+);
+
+ALTER TABLE perfiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Usuarios pueden ver todos los perfiles" ON perfiles FOR SELECT USING (true);
+CREATE POLICY "Administradores pueden gestionar perfiles" ON perfiles FOR ALL USING (true); -- Simplificado por ahora
+
+-- TABLA DE REPARTOS
+CREATE TABLE IF NOT EXISTS repartos (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    repartidor_id UUID REFERENCES perfiles(id) ON DELETE SET NULL,
+    vehiculo_id UUID REFERENCES vehiculos(id) ON DELETE SET NULL,
+    zona_id UUID REFERENCES zonas_reparto(id) ON DELETE SET NULL,
+    fecha DATE DEFAULT CURRENT_DATE,
+    estado TEXT DEFAULT 'pendiente', -- 'pendiente', 'en_curso', 'completado', 'cancelado'
+    notas TEXT
+);
+
+ALTER TABLE repartos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Usuarios pueden ver sus propios repartos" ON repartos FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Usuarios pueden insertar sus propios repartos" ON repartos FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Usuarios pueden editar sus propios repartos" ON repartos FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Usuarios pueden borrar sus propios repartos" ON repartos FOR DELETE USING (auth.uid() = user_id);

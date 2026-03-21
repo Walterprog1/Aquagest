@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Modal from './Modal';
+import { supabase } from '../../lib/supabase';
 
 const UsuarioFormModal = ({ isOpen, onClose, usuarioAEditar }) => {
     const [formData, setFormData] = useState({
@@ -12,6 +13,7 @@ const UsuarioFormModal = ({ isOpen, onClose, usuarioAEditar }) => {
         estado: 'activo',
         password: ''
     });
+    const [isLoading, setIsLoading] = useState(false);
 
     React.useEffect(() => {
         if (isOpen && usuarioAEditar) {
@@ -44,29 +46,51 @@ const UsuarioFormModal = ({ isOpen, onClose, usuarioAEditar }) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setIsLoading(true);
 
-        const usuariosGuardados = JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]');
+        try {
+            if (usuarioAEditar) {
+                const { error } = await supabase
+                    .from('perfiles')
+                    .update({
+                        nombre: formData.nombre,
+                        apellido: formData.apellido,
+                        dni: formData.dni,
+                        email: formData.email,
+                        telefono: formData.telefono,
+                        rol: formData.rol,
+                        estado: formData.estado
+                        // No actualizamos password aquí por simplicidad en esta fase
+                    })
+                    .eq('id', usuarioAEditar.id);
 
-        if (usuarioAEditar) {
-            const index = usuariosGuardados.findIndex(u => u.id === usuarioAEditar.id);
-            if (index !== -1) {
-                usuariosGuardados[index] = { ...usuarioAEditar, ...formData };
+                if (error) throw error;
+                alert('¡Usuario actualizado con éxito!');
+            } else {
+                const { error } = await supabase
+                    .from('perfiles')
+                    .insert([{
+                        nombre: formData.nombre,
+                        apellido: formData.apellido,
+                        dni: formData.dni,
+                        email: formData.email,
+                        telefono: formData.telefono,
+                        rol: formData.rol,
+                        estado: formData.estado
+                    }]);
+
+                if (error) throw error;
+                alert('¡Usuario registrado con éxito!');
             }
-        } else {
-            const nuevoUsuario = {
-                ...formData,
-                id: Date.now().toString(),
-                fechaRegistro: new Date().toISOString()
-            };
-            usuariosGuardados.push(nuevoUsuario);
+            onClose();
+        } catch (error) {
+            console.error("Error gestionando usuario:", error);
+            alert("Error: " + error.message);
+        } finally {
+            setIsLoading(false);
         }
-
-        localStorage.setItem('aquagest_usuarios', JSON.stringify(usuariosGuardados));
-
-        alert(usuarioAEditar ? '¡Usuario actualizado con éxito!' : '¡Usuario registrado con éxito!');
-        onClose();
     };
 
     const inputStyle = {
@@ -87,7 +111,7 @@ const UsuarioFormModal = ({ isOpen, onClose, usuarioAEditar }) => {
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="👤 Registrar Nuevo Usuario">
+        <Modal isOpen={isOpen} onClose={onClose} title={usuarioAEditar ? "✏️ Editar Usuario" : "👤 Registrar Nuevo Usuario"}>
             <form onSubmit={handleSubmit}>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <div style={{ flex: 1 }}>
@@ -103,11 +127,11 @@ const UsuarioFormModal = ({ isOpen, onClose, usuarioAEditar }) => {
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <div style={{ flex: 1 }}>
                         <label style={labelStyle}>DNI *</label>
-                        <input required style={inputStyle} type="text" name="dni" value={formData.dni} onChange={handleChange} placeholder="Sin puntos" />
+                        <input style={inputStyle} type="text" name="dni" value={formData.dni} onChange={handleChange} placeholder="Sin puntos" />
                     </div>
                     <div style={{ flex: 1 }}>
                         <label style={labelStyle}>Teléfono *</label>
-                        <input required style={inputStyle} type="tel" name="telefono" value={formData.telefono} onChange={handleChange} placeholder="Ej. 1123456789" />
+                        <input style={inputStyle} type="tel" name="telefono" value={formData.telefono} onChange={handleChange} placeholder="Ej. 1123456789" />
                     </div>
                 </div>
 
@@ -116,10 +140,12 @@ const UsuarioFormModal = ({ isOpen, onClose, usuarioAEditar }) => {
                     <input required style={inputStyle} type="email" name="email" value={formData.email} onChange={handleChange} placeholder="usuario@email.com" />
                 </div>
 
-                <div style={{ marginBottom: '1rem' }}>
-                    <label style={labelStyle}>Contraseña de Acceso *</label>
-                    <input required style={inputStyle} type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Mínimo 6 caracteres" minLength="6" />
-                </div>
+                {!usuarioAEditar && (
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={labelStyle}>Contraseña de Acceso (Opcional por ahora) *</label>
+                        <input style={inputStyle} type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Mínimo 6 caracteres" />
+                    </div>
+                )}
 
                 <div style={{ display: 'flex', gap: '1rem', backgroundColor: 'var(--background-gray)', padding: '1rem', borderRadius: 'var(--border-radius-md)', marginBottom: '1rem' }}>
                     <div style={{ flex: 1 }}>
@@ -149,16 +175,17 @@ const UsuarioFormModal = ({ isOpen, onClose, usuarioAEditar }) => {
                         fontWeight: '500'
                     }}>Cancelar</button>
 
-                    <button type="submit" style={{
+                    <button type="submit" disabled={isLoading} style={{
                         padding: '0.75rem 1.5rem',
                         border: 'none',
                         backgroundColor: 'var(--primary-blue)',
                         color: 'white',
                         borderRadius: 'var(--border-radius-md)',
                         cursor: 'pointer',
-                        fontWeight: '500'
+                        fontWeight: '500',
+                        opacity: isLoading ? 0.7 : 1
                     }}>
-                        Crear Usuario
+                        {isLoading ? 'Guardando...' : (usuarioAEditar ? 'Guardar Cambios' : 'Crear Usuario')}
                     </button>
                 </div>
             </form>

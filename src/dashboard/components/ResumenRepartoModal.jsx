@@ -31,20 +31,21 @@ const ResumenRepartoModal = ({ isOpen, onClose, reparto }) => {
         <Modal isOpen={isOpen} onClose={onClose} title={`📋 Resumen del Reparto: ${reparto.id}`}>
 
             <div style={{ marginBottom: '1.5rem', fontSize: '0.875rem', color: 'var(--text-dark)' }}>
-                <p><strong>Repartidor:</strong> {reparto.repartidor}</p>
-                <p><strong>Fecha/Hora:</strong> {reparto.fecha}</p>
+                <p><strong>Repartidor:</strong> {reparto.repartidorNombre || 'Sin asignar'}</p>
+                <p><strong>Zona:</strong> {reparto.zonaNombre || 'Sin zona'}</p>
+                <p><strong>Fecha:</strong> {new Date(reparto.fecha).toLocaleDateString()}</p>
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
                 <div style={cardStyle}>
                     <div style={{ fontSize: '1.5rem' }}>💧</div>
-                    <div style={numberStyle}>{reparto.stats.bidonesVendidos}</div>
+                    <div style={numberStyle}>{reparto.stats?.bidonesVendidos || 0}</div>
                     <div style={labelStyle}>Bidones Vendidos</div>
                 </div>
 
                 <div style={cardStyle}>
                     <div style={{ fontSize: '1.5rem' }}>💵</div>
-                    <div style={numberStyle}>${reparto.stats.pagosRecibidos}</div>
+                    <div style={numberStyle}>${reparto.stats?.pagosRecibidos || 0}</div>
                     <div style={labelStyle}>Pagos Recibidos</div>
                 </div>
             </div>
@@ -52,13 +53,13 @@ const ResumenRepartoModal = ({ isOpen, onClose, reparto }) => {
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 <div style={cardStyle}>
                     <div style={{ fontSize: '1.5rem' }}>📉</div>
-                    <div style={numberStyle}>${reparto.stats.deudasGeneradas}</div>
+                    <div style={numberStyle}>${reparto.stats?.deudasGeneradas || 0}</div>
                     <div style={labelStyle}>Deudas (Fiado)</div>
                 </div>
 
                 <div style={cardStyle}>
                     <div style={{ fontSize: '1.5rem' }}>🔄</div>
-                    <div style={numberStyle}>{reparto.stats.bidonesPrestados}</div>
+                    <div style={numberStyle}>{reparto.stats?.bidonesPrestados || 0}</div>
                     <div style={labelStyle}>Bidones Prestados</div>
                 </div>
             </div>
