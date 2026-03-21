@@ -171,16 +171,6 @@ const ClienteFormModal = ({ isOpen, onClose, clienteAEditar }) => {
                     <p style={{ fontSize: '0.65rem', color: '#c2410c', marginTop: '4px' }}>💡 Sirve para registrar el pago automático cuando te transfieran.</p>
                 </div>
 
-                <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ ...labelStyle, color: 'var(--primary-blue)' }}>📝 Notas (Opcional)</label>
-                    <textarea 
-                        style={{ ...inputStyle, resize: 'vertical', minHeight: '80px', backgroundColor: 'white', color: 'black' }} 
-                        name="notas" 
-                        value={formData.notas} 
-                        onChange={handleChange} 
-                        placeholder="Instrucciones de entrega, horarios, etc."
-                    ></textarea>
-                </div>
 
                 <div>
                     <label style={labelStyle}>Dirección *</label>
