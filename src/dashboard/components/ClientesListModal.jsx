@@ -163,7 +163,33 @@ const ClientesListModal = ({ isOpen, onClose }) => {
                                             📍 Ver Maps
                                         </button>
                                     </td>
-                                    <td style={tdStyle}>{cliente.telefono}</td>
+                                    <td style={tdStyle}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span>{cliente.telefono}</span>
+                                            {cliente.whatsapp && (
+                                                <button
+                                                    onClick={() => {
+                                                        const cleanNum = cliente.whatsapp.replace(/\D/g, '');
+                                                        const finalNum = cleanNum.startsWith('54') ? cleanNum : `549${cleanNum}`;
+                                                        window.open(`https://wa.me/${finalNum}`, '_blank');
+                                                    }}
+                                                    style={{
+                                                        padding: '2px 6px',
+                                                        backgroundColor: '#25d366',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '4px',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.7rem',
+                                                        fontWeight: 'bold'
+                                                    }}
+                                                    title="Enviar WhatsApp"
+                                                >
+                                                    WA
+                                                </button>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td style={tdStyle}>
                                         {cliente.precio_especial ? `$${cliente.precio_especial}` : '-'}
                                     </td>

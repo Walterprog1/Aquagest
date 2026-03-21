@@ -34,12 +34,11 @@ const OrdersTable = () => {
     const cargarPedidos = async () => {
         setIsLoading(true);
         try {
-            // Obtenemos todos los pedidos para filtrar en memoria de forma más robusta
             const { data, error } = await supabase
                 .from('pedidos')
                 .select(`
                     *,
-                    clientes (nombre, telefono, direccion),
+                    clientes (nombre, telefono, whatsapp, direccion),
                     detalles_pedido (producto, cantidad)
                 `)
                 .order('created_at', { ascending: false });
@@ -48,7 +47,6 @@ const OrdersTable = () => {
 
             const allOrders = data || [];
 
-            // Filtrado robusto según la pestaña activa
             let filtered = [];
             if (activeTab === 'Pendientes') {
                 filtered = allOrders.filter(o => 
@@ -95,6 +93,15 @@ const OrdersTable = () => {
         }
     };
 
+    const handleWhatsApp = (cliente) => {
+        if (!cliente) return;
+        const num = cliente.whatsapp || cliente.telefono;
+        if (!num) return;
+        const cleanNum = num.replace(/\D/g, '');
+        const finalNum = cleanNum.startsWith('54') ? cleanNum : `549${cleanNum}`;
+        window.open(`https://wa.me/${finalNum}`, '_blank');
+    };
+
     return (
         <div className="orders-area">
             <div className="orders-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -117,7 +124,6 @@ const OrdersTable = () => {
                 </div>
             </div>
             
-            {/* Desktop Table View */}
             <div className="table-responsive-desktop" style={{ overflowX: 'auto' }}>
                 <table className="orders-table">
                     <thead>
@@ -139,7 +145,18 @@ const OrdersTable = () => {
                             <tr key={order.id}>
                                 <td style={{ fontSize: '0.7rem' }}>{order.id.split('-')[0]}</td>
                                 <td style={{ fontSize: '0.75rem' }}>{new Date(order.created_at).toLocaleString()}</td>
-                                <td>{order.clientes?.nombre || 'Consumidor Final'}</td>
+                                <td>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        {order.clientes?.nombre || 'Consumidor Final'}
+                                        {(order.clientes?.whatsapp || order.clientes?.telefono) && (
+                                            <button 
+                                                onClick={() => handleWhatsApp(order.clientes)}
+                                                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem', padding: 0 }}
+                                                title="WhatsApp"
+                                            >💬</button>
+                                        )}
+                                    </div>
+                                </td>
                                 <td style={{ fontWeight: '600' }}>${order.total}</td>
                                 <td>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -174,7 +191,6 @@ const OrdersTable = () => {
                 </table>
             </div>
 
-            {/* Mobile Card View (Visible via CSS Media Query) */}
             <div className="mobile-orders-view">
                 {orders.map(order => (
                     <div key={order.id} style={{
@@ -229,21 +245,38 @@ const OrdersTable = () => {
                             </div>
                         )}
                         <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
-                            {order.clientes?.telefono && (
-                                <a href={`tel:${order.clientes.telefono}`} style={{
-                                    flex: 1,
-                                    textAlign: 'center',
-                                    padding: '8px',
-                                    backgroundColor: '#f3f4f6',
-                                    borderRadius: '6px',
-                                    textDecoration: 'none',
-                                    color: '#374151',
-                                    fontSize: '0.8rem',
-                                    fontWeight: '500'
-                                }}>📞 Llamar</a>
+                            {(order.clientes?.telefono || order.clientes?.whatsapp) && (
+                                <>
+                                    <a href={`tel:${order.clientes.telefono}`} style={{
+                                        flex: 1,
+                                        textAlign: 'center',
+                                        padding: '8px',
+                                        backgroundColor: '#f3f4f6',
+                                        borderRadius: '6px',
+                                        textDecoration: 'none',
+                                        color: '#374151',
+                                        fontSize: '0.8rem',
+                                        fontWeight: '500'
+                                    }}>📞 Llamar</a>
+                                    <button 
+                                        onClick={() => handleWhatsApp(order.clientes)}
+                                        style={{
+                                            flex: 1,
+                                            textAlign: 'center',
+                                            padding: '8px',
+                                            backgroundColor: '#25d366',
+                                            borderRadius: '6px',
+                                            border: 'none',
+                                            color: 'white',
+                                            fontSize: '0.8rem',
+                                            fontWeight: '600',
+                                            cursor: 'pointer'
+                                        }}
+                                    >💬 WhatsApp</button>
+                                </>
                             )}
                             <button style={{
-                                flex: 2,
+                                flex: 1.5,
                                 padding: '8px',
                                 backgroundColor: 'var(--primary-blue)',
                                 color: 'white',
@@ -251,7 +284,7 @@ const OrdersTable = () => {
                                 borderRadius: '6px',
                                 fontSize: '0.8rem',
                                 fontWeight: '500'
-                            }}>Ver Detalles</button>
+                            }}>Detalles</button>
                         </div>
                     </div>
                 ))}

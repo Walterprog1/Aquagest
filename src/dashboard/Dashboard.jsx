@@ -12,6 +12,7 @@ import ZonasListModal from './components/ZonasListModal';
 import UsuariosListModal from './components/UsuariosListModal';
 import PedidosListModal from './components/PedidosListModal';
 import DispensersListModal from './components/DispensersListModal';
+import WhatsappMassiveModal from './components/WhatsappMassiveModal';
 
 const Dashboard = ({ user, onLogout }) => {
     const [showClientes, setShowClientes] = React.useState(false);
@@ -20,6 +21,7 @@ const Dashboard = ({ user, onLogout }) => {
     const [showUsuarios, setShowUsuarios] = React.useState(false);
     const [showPedidos, setShowPedidos] = React.useState(false);
     const [showDispensers, setShowDispensers] = React.useState(false);
+    const [showMassiveWA, setShowMassiveWA] = React.useState(false);
 
     return (
         <div className="dashboard-container">
@@ -55,7 +57,7 @@ const Dashboard = ({ user, onLogout }) => {
                     </button>
                 </div>
 
-                <QuickActions />
+                <QuickActions onOpenMassiveWA={() => setShowMassiveWA(true)} />
 
                 <div className="dashboard-grid">
                     <TodayDeliveries />
@@ -87,6 +89,10 @@ const Dashboard = ({ user, onLogout }) => {
             <DispensersListModal
                 isOpen={showDispensers}
                 onClose={() => setShowDispensers(false)}
+            />
+            <WhatsappMassiveModal
+                isOpen={showMassiveWA}
+                onClose={() => setShowMassiveWA(false)}
             />
         </div>
     );
