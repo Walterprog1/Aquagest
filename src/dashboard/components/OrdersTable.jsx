@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 
-const OrdersTable = () => {
+const OrdersTable = ({ onOpenEditPedido }) => {
     const [activeTab, setActiveTab] = useState('Pendientes');
     const [orders, setOrders] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -39,7 +39,7 @@ const OrdersTable = () => {
                 .select(`
                     *,
                     clientes (nombre, telefono, whatsapp, direccion),
-                    detalles_pedido (producto, cantidad)
+                    detalles_pedido (producto, cantidad, precio_unitario)
                 `)
                 .order('created_at', { ascending: false });
 
@@ -80,11 +80,6 @@ const OrdersTable = () => {
 
             if (error) throw error;
 
-            if (!data || data.length === 0) {
-                alert("No se pudo actualizar el pago. Por favor, refresca la página.");
-                return;
-            }
-
             cargarPedidos();
             actualizarContadores();
         } catch (error) {
@@ -100,6 +95,17 @@ const OrdersTable = () => {
         const cleanNum = num.replace(/\D/g, '');
         const finalNum = cleanNum.startsWith('54') ? cleanNum : `549${cleanNum}`;
         window.open(`https://wa.me/${finalNum}`, '_blank');
+    };
+
+    const actionButtonStyle = {
+        padding: '4px 8px',
+        backgroundColor: '#f1f5f9',
+        border: '1px solid #e2e8f0',
+        borderRadius: '6px',
+        fontSize: '0.7rem',
+        cursor: 'pointer',
+        color: '#475569',
+        fontWeight: '500'
     };
 
     return (
@@ -135,7 +141,7 @@ const OrdersTable = () => {
                             <th>Pago</th>
                             <th>Dirección</th>
                             <th>Ref/Notas</th>
-                            <th>Productos</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -180,10 +186,11 @@ const OrdersTable = () => {
                                 </td>
                                 <td style={{ fontSize: '0.7rem' }}>{order.clientes?.direccion || '-'}</td>
                                 <td style={{ fontSize: '0.7rem' }}>{order.notas}</td>
-                                <td style={{ fontSize: '0.7rem' }}>
-                                    {order.detalles_pedido?.map((d, i) => (
-                                        <div key={i}>{d.cantidad}x {d.producto}</div>
-                                    ))}
+                                <td>
+                                    <button 
+                                        onClick={() => onOpenEditPedido(order)}
+                                        style={actionButtonStyle}
+                                    >📝 Ver / Editar</button>
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>No hay pedidos {activeTab.toLowerCase()}</td></tr>}
@@ -257,7 +264,7 @@ const OrdersTable = () => {
                                         color: '#374151',
                                         fontSize: '0.8rem',
                                         fontWeight: '500'
-                                    }}>📞 Llamar</a>
+                                    }}>📞</a>
                                     <button 
                                         onClick={() => handleWhatsApp(order.clientes)}
                                         style={{
@@ -272,19 +279,22 @@ const OrdersTable = () => {
                                             fontWeight: '600',
                                             cursor: 'pointer'
                                         }}
-                                    >💬 WhatsApp</button>
+                                    >💬</button>
                                 </>
                             )}
-                            <button style={{
-                                flex: 1.5,
-                                padding: '8px',
-                                backgroundColor: 'var(--primary-blue)',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                fontSize: '0.8rem',
-                                fontWeight: '500'
-                            }}>Detalles</button>
+                            <button 
+                                onClick={() => onOpenEditPedido(order)}
+                                style={{
+                                    flex: 2,
+                                    padding: '8px',
+                                    backgroundColor: 'var(--primary-blue)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: '500'
+                                }}
+                            >Detalles / Editar</button>
                         </div>
                     </div>
                 ))}

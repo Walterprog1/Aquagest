@@ -4,26 +4,29 @@ import { supabase } from '../../lib/supabase';
 const MigrationTool = ({ user }) => {
     const [hasData, setHasData] = useState(false);
     const [isMigrating, setIsMigrating] = useState(false);
-    const [stats, setStats] = useState({ clientes: 0, vehiculos: 0, zonas: 0, pedidos: 0 });
+    const [stats, setStats] = useState({ clientes: 0, vehiculos: 0, zonas: 0, pedidos: 0, usuarios: 0 });
 
     useEffect(() => {
         const clientesStr = localStorage.getItem('aquagest_clientes');
         const vehiculosStr = localStorage.getItem('aquagest_vehiculos');
         const zonasStr = localStorage.getItem('aquagest_zonas');
         const pedidosStr = localStorage.getItem('aquagest_pedidos');
+        const usuariosStr = localStorage.getItem('aquagest_usuarios');
 
         const clientes = JSON.parse(clientesStr || '[]');
         const vehiculos = JSON.parse(vehiculosStr || '[]');
         const zonas = JSON.parse(zonasStr || '[]');
         const pedidos = JSON.parse(pedidosStr || '[]');
+        const usuarios = JSON.parse(usuariosStr || '[]');
 
-        if (clientes.length > 0 || vehiculos.length > 0 || zonas.length > 0 || pedidos.length > 0) {
+        if (clientes.length > 0 || vehiculos.length > 0 || zonas.length > 0 || pedidos.length > 0 || usuarios.length > 0) {
             setHasData(true);
             setStats({
                 clientes: clientes.length,
                 vehiculos: vehiculos.length,
                 zonas: zonas.length,
-                pedidos: pedidos.length
+                pedidos: pedidos.length,
+                usuarios: usuarios.length
             });
         }
     }, []);
@@ -84,11 +87,27 @@ const MigrationTool = ({ user }) => {
                 if (error) throw error;
             }
 
-            // 4. Pedidos
+            // 4. Usuarios (Perfiles)
+            const usuarios = JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]');
+            if (usuarios.length > 0) {
+                const perfilesToInsert = usuarios.map(u => ({
+                    nombre: u.nombre,
+                    apellido: u.apellido,
+                    dni: u.dni,
+                    email: u.email,
+                    telefono: u.telefono,
+                    rol: u.rol,
+                    estado: u.estado
+                    // password no se migra a perfiles, se gestionaría vía Auth si es necesario
+                }));
+                const { error } = await supabase.from('perfiles').insert(perfilesToInsert);
+                if (error) throw error;
+            }
+
+            // 5. Pedidos
             const pedidos = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
             if (pedidos.length > 0) {
                 for (const p of pedidos) {
-                    // Intentamos buscar el cliente por nombre para mantener el vínculo si es posible
                     let clienteId = null;
                     if (p.client) {
                         const { data: dbClient } = await supabase
@@ -115,7 +134,6 @@ const MigrationTool = ({ user }) => {
                     
                     if (ep) throw ep;
 
-                    // Detalles del pedido
                     if (p.items && p.items.length > 0) {
                         const detalles = p.items.map(item => ({
                             pedido_id: newPedido.id,
@@ -134,9 +152,10 @@ const MigrationTool = ({ user }) => {
             localStorage.removeItem('aquagest_vehiculos');
             localStorage.removeItem('aquagest_zonas');
             localStorage.removeItem('aquagest_pedidos');
-            localStorage.removeItem('aquagest_stock'); // También stock si existiera
+            localStorage.removeItem('aquagest_usuarios');
+            localStorage.removeItem('aquagest_stock');
 
-            alert('¡Migración exitosa! Todos tus datos (incluyendo pedidos) están en la nube.');
+            alert('¡Migración exitosa! Todos tus datos están en la nube.');
             window.location.reload();
         } catch (error) {
             console.error("Error en migración:", error);
@@ -163,10 +182,10 @@ const MigrationTool = ({ user }) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <span style={{ fontSize: '1.5rem' }}>🚚</span>
                 <div>
-                    <h4 style={{ margin: 0, color: '#9a3412', fontSize: '1rem' }}>¡Hemos detectado datos locales!</h4>
+                    <h4 style={{ margin: 0, color: '#9a3412', fontSize: '1rem' }}>¡Deberías migrar tus datos!</h4>
                     <p style={{ margin: '4px 0 0', color: '#c2410c', fontSize: '0.875rem' }}>
-                        Tienes {stats.clientes} clientes, {stats.vehiculos} vehículos, {stats.zonas} zonas y {stats.pedidos} pedidos guardados localmente. 
-                        Súbelos a la nube para sincronizar toda tu gestión.
+                        Tienes datos guardados en este navegador ({stats.usuarios} usuarios, {stats.clientes} clientes, etc.). 
+                        Presiona el botón para subirlos a la nube y que aparezcan en todos tus dispositivos.
                     </p>
                 </div>
             </div>

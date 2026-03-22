@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import ClienteFormModal from './ClienteFormModal';
 import RepartoFormModal from './RepartoFormModal';
-import PedidoFormModal from './PedidoFormModal';
 import StockFormModal from './StockFormModal';
 import ZonaRepartoFormModal from './ZonaRepartoFormModal';
 import VehiculoFormModal from './VehiculoFormModal';
@@ -17,10 +16,9 @@ const ActionButton = ({ icon, label, onClick }) => (
     </button>
 );
 
-const QuickActions = ({ onOpenMassiveWA }) => {
+const QuickActions = ({ onOpenMassiveWA, onOpenAddPedido }) => {
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [isRepartoModalOpen, setIsRepartoModalOpen] = useState(false);
-    const [isPedidoModalOpen, setIsPedidoModalOpen] = useState(false);
     const [isStockModalOpen, setIsStockModalOpen] = useState(false);
     const [isZonaModalOpen, setIsZonaModalOpen] = useState(false);
     const [isVehiculoModalOpen, setIsVehiculoModalOpen] = useState(false);
@@ -51,7 +49,7 @@ const QuickActions = ({ onOpenMassiveWA }) => {
                     let clickHandler = undefined;
                     if (action.label === 'Agregar Cliente') clickHandler = () => setIsClientModalOpen(true);
                     if (action.label === 'Agregar Reparto') clickHandler = () => setIsRepartoModalOpen(true);
-                    if (action.label === 'Agregar Pedido') clickHandler = () => setIsPedidoModalOpen(true);
+                    if (action.label === 'Agregar Pedido') clickHandler = onOpenAddPedido;
                     if (action.label === 'Agregar Stock') clickHandler = () => setIsStockModalOpen(true);
                     if (action.label === 'Agregar Zona de Reparto') clickHandler = () => setIsZonaModalOpen(true);
                     if (action.label === 'Agregar Vehículo') clickHandler = () => setIsVehiculoModalOpen(true);
@@ -80,11 +78,6 @@ const QuickActions = ({ onOpenMassiveWA }) => {
             <RepartoFormModal
                 isOpen={isRepartoModalOpen}
                 onClose={() => setIsRepartoModalOpen(false)}
-            />
-
-            <PedidoFormModal
-                isOpen={isPedidoModalOpen}
-                onClose={() => setIsPedidoModalOpen(false)}
             />
 
             <StockFormModal

@@ -10,7 +10,7 @@ import ClientesListModal from './components/ClientesListModal';
 import VehiculosListModal from './components/VehiculosListModal';
 import ZonasListModal from './components/ZonasListModal';
 import UsuariosListModal from './components/UsuariosListModal';
-import PedidosListModal from './components/PedidosListModal';
+import PedidoFormModal from './components/PedidoFormModal';
 import DispensersListModal from './components/DispensersListModal';
 import WhatsappMassiveModal from './components/WhatsappMassiveModal';
 
@@ -19,9 +19,22 @@ const Dashboard = ({ user, onLogout }) => {
     const [showVehiculos, setShowVehiculos] = React.useState(false);
     const [showZonas, setShowZonas] = React.useState(false);
     const [showUsuarios, setShowUsuarios] = React.useState(false);
-    const [showPedidos, setShowPedidos] = React.useState(false);
     const [showDispensers, setShowDispensers] = React.useState(false);
     const [showMassiveWA, setShowMassiveWA] = React.useState(false);
+    
+    // Modal de Edición/Creación de Pedidos
+    const [isPedidoModalOpen, setIsPedidoModalOpen] = React.useState(false);
+    const [pedidoAEditar, setPedidoAEditar] = React.useState(null);
+
+    const openAddPedido = () => {
+        setPedidoAEditar(null);
+        setIsPedidoModalOpen(true);
+    };
+
+    const openEditPedido = (pedido) => {
+        setPedidoAEditar(pedido);
+        setIsPedidoModalOpen(true);
+    };
 
     return (
         <div className="dashboard-container">
@@ -39,7 +52,7 @@ const Dashboard = ({ user, onLogout }) => {
                     onOpenVehiculos={() => setShowVehiculos(true)}
                     onOpenZonas={() => setShowZonas(true)}
                     onOpenUsuarios={() => setShowUsuarios(true)}
-                    onOpenPendientes={() => setShowPedidos(true)}
+                    onOpenPendientes={() => {}} // No longer needed here as a separate modal
                     onOpenDispensers={() => setShowDispensers(true)}
                 />
 
@@ -57,11 +70,14 @@ const Dashboard = ({ user, onLogout }) => {
                     </button>
                 </div>
 
-                <QuickActions onOpenMassiveWA={() => setShowMassiveWA(true)} />
+                <QuickActions 
+                    onOpenMassiveWA={() => setShowMassiveWA(true)} 
+                    onOpenAddPedido={openAddPedido}
+                />
 
                 <div className="dashboard-grid">
                     <TodayDeliveries />
-                    <OrdersTable />
+                    <OrdersTable onOpenEditPedido={openEditPedido} />
                     <MapWidget />
                 </div>
             </main>
@@ -82,10 +98,6 @@ const Dashboard = ({ user, onLogout }) => {
                 isOpen={showUsuarios}
                 onClose={() => setShowUsuarios(false)}
             />
-            <PedidosListModal
-                isOpen={showPedidos}
-                onClose={() => setShowPedidos(false)}
-            />
             <DispensersListModal
                 isOpen={showDispensers}
                 onClose={() => setShowDispensers(false)}
@@ -93,6 +105,11 @@ const Dashboard = ({ user, onLogout }) => {
             <WhatsappMassiveModal
                 isOpen={showMassiveWA}
                 onClose={() => setShowMassiveWA(false)}
+            />
+            <PedidoFormModal
+                isOpen={isPedidoModalOpen}
+                onClose={() => setIsPedidoModalOpen(false)}
+                pedidoAEditar={pedidoAEditar}
             />
         </div>
     );

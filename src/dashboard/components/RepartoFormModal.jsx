@@ -27,6 +27,7 @@ const RepartoFormModal = ({ isOpen, onClose }) => {
                     .select('*')
                     .eq('rol', 'repartidor')
                     .eq('estado', 'activo');
+                
                 if (errRep) throw errRep;
                 setRepartidores(dataRep || []);
 

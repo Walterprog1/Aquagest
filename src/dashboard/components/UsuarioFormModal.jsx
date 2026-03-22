@@ -69,7 +69,7 @@ const UsuarioFormModal = ({ isOpen, onClose, usuarioAEditar }) => {
                 if (error) throw error;
                 alert('¡Usuario actualizado con éxito!');
             } else {
-                const { error } = await supabase
+                const { data, error } = await supabase
                     .from('perfiles')
                     .insert([{
                         nombre: formData.nombre,
@@ -79,7 +79,8 @@ const UsuarioFormModal = ({ isOpen, onClose, usuarioAEditar }) => {
                         telefono: formData.telefono,
                         rol: formData.rol,
                         estado: formData.estado
-                    }]);
+                    }])
+                    .select();
 
                 if (error) throw error;
                 alert('¡Usuario registrado con éxito!');

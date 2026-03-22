@@ -2,15 +2,38 @@ import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { supabase } from '../../lib/supabase';
 
-const PedidoFormModal = ({ isOpen, onClose }) => {
+const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
     const [clientesGuardados, setClientesGuardados] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const [formData, setFormData] = useState({
+        cliente: '',
+        fecha: new Date().toISOString().split('T')[0],
+        envasesEntregados: 0,
+        envasesRecibidos: 0,
+        precioUnitario: 2500,
+        medioPago: 'efectivo',
+        notas: ''
+    });
 
     useEffect(() => {
         if (isOpen) {
             cargarClientes();
+            if (pedidoAEditar) {
+                cargarDatosPedido(pedidoAEditar);
+            } else {
+                setFormData({
+                    cliente: '',
+                    fecha: new Date().toISOString().split('T')[0],
+                    envasesEntregados: 0,
+                    envasesRecibidos: 0,
+                    precioUnitario: 2500,
+                    medioPago: 'efectivo',
+                    notas: ''
+                });
+            }
         }
-    }, [isOpen]);
+    }, [isOpen, pedidoAEditar]);
 
     const cargarClientes = async () => {
         const { data, error } = await supabase
@@ -23,15 +46,29 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
         }
     };
 
-    const [formData, setFormData] = useState({
-        cliente: '',
-        fecha: new Date().toISOString().split('T')[0],
-        envasesEntregados: 0,
-        envasesRecibidos: 0,
-        precioUnitario: 2500,
-        medioPago: 'efectivo',
-        notas: ''
-    });
+    const cargarDatosPedido = async (pedido) => {
+        // Obtenemos los detalles si no vienen incluidos
+        let detalles = pedido.detalles_pedido;
+        if (!detalles) {
+            const { data, error } = await supabase
+                .from('detalles_pedido')
+                .select('*')
+                .eq('pedido_id', pedido.id);
+            if (!error) detalles = data;
+        }
+
+        const detalle = (detalles && detalles.length > 0) ? detalles[0] : { cantidad: 0, precio_unitario: 2500 };
+
+        setFormData({
+            cliente: pedido.cliente_id || '',
+            fecha: pedido.fecha,
+            envasesEntregados: detalle.cantidad,
+            envasesRecibidos: 0, // No persistido en este esquema
+            precioUnitario: detalle.precio_unitario,
+            medioPago: pedido.medio_pago,
+            notas: pedido.notas || ''
+        });
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -55,8 +92,6 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
         return formData.envasesEntregados * formData.precioUnitario;
     };
 
-    const [paymentUrl, setPaymentUrl] = useState(null);
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -65,53 +100,81 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("No autenticado");
 
-            // 1. Insertar el Pedido
-            const { data: pedido, error: errorPedido } = await supabase
-                .from('pedidos')
-                .insert([{
-                    cliente_id: formData.cliente || null,
-                    fecha: formData.fecha,
-                    total: calcularTotal(),
-                    medio_pago: formData.medioPago,
-                    estado: 'Entregado',
-                    pago_estado: (formData.medioPago === 'transferencia' || formData.medioPago === 'fiado') ? 'pendiente' : 'pagado',
-                    notas: formData.notas,
-                    user_id: user.id
-                }])
-                .select()
-                .single();
+            const pedidoData = {
+                cliente_id: formData.cliente || null,
+                fecha: formData.fecha,
+                total: calcularTotal(),
+                medio_pago: formData.medioPago,
+                estado: pedidoAEditar ? pedidoAEditar.estado : 'Entregado',
+                pago_estado: (formData.medioPago === 'transferencia' || formData.medioPago === 'fiado') ? 'pendiente' : 'pagado',
+                notas: formData.notas,
+                user_id: user.id
+            };
 
-            if (errorPedido) throw errorPedido;
+            if (pedidoAEditar) {
+                // ACTUALIZAR PEDIDO
+                const { error: errorUpdate } = await supabase
+                    .from('pedidos')
+                    .update(pedidoData)
+                    .eq('id', pedidoAEditar.id);
 
-            // 2. Insertar el detalle
-            const { error: errorDetalle } = await supabase
-                .from('detalles_pedido')
-                .insert([{
-                    pedido_id: pedido.id,
-                    producto: 'Bidón 20L',
-                    cantidad: formData.envasesEntregados,
-                    precio_unitario: formData.precioUnitario
-                }]);
+                if (errorUpdate) throw errorUpdate;
 
-            if (errorDetalle) throw errorDetalle;
+                // ACTUALIZAR DETALLE (Asumimos el primer detalle como el principal)
+                const { data: detallesExistentes } = await supabase
+                    .from('detalles_pedido')
+                    .select('id')
+                    .eq('pedido_id', pedidoAEditar.id);
 
-            alert(formData.medioPago === 'transferencia' ? '¡Venta registrada! El sistema buscará el pago automáticamente.' : '¡Venta registrada con éxito!');
+                if (detallesExistentes && detallesExistentes.length > 0) {
+                    const { error: errorUpdateDetalle } = await supabase
+                        .from('detalles_pedido')
+                        .update({
+                            cantidad: formData.envasesEntregados,
+                            precio_unitario: formData.precioUnitario
+                        })
+                        .eq('id', detallesExistentes[0].id);
+                    if (errorUpdateDetalle) throw errorUpdateDetalle;
+                } else {
+                    // Si por alguna razón no tiene detalles, los creamos
+                    await supabase.from('detalles_pedido').insert([{
+                        pedido_id: pedidoAEditar.id,
+                        producto: 'Bidón 20L',
+                        cantidad: formData.envasesEntregados,
+                        precio_unitario: formData.precioUnitario
+                    }]);
+                }
+
+                alert('¡Pedido actualizado con éxito!');
+            } else {
+                // INSERTAR NUEVO PEDIDO
+                const { data: pedido, error: errorPedido } = await supabase
+                    .from('pedidos')
+                    .insert([pedidoData])
+                    .select()
+                    .single();
+
+                if (errorPedido) throw errorPedido;
+
+                const { error: errorDetalle } = await supabase
+                    .from('detalles_pedido')
+                    .insert([{
+                        pedido_id: pedido.id,
+                        producto: 'Bidón 20L',
+                        cantidad: formData.envasesEntregados,
+                        precio_unitario: formData.precioUnitario
+                    }]);
+
+                if (errorDetalle) throw errorDetalle;
+
+                alert(formData.medioPago === 'transferencia' ? '¡Venta registrada! El sistema buscará el pago automáticamente.' : '¡Venta registrada con éxito!');
+            }
             
-            setFormData({
-                cliente: '',
-                fecha: new Date().toISOString().split('T')[0],
-                envasesEntregados: 0,
-                envasesRecibidos: 0,
-                precioUnitario: 2500,
-                medioPago: 'efectivo',
-                notas: ''
-            });
-
             onClose();
 
         } catch (error) {
-            console.error("Error al registrar pedido:", error);
-            alert("No se pudo registrar la venta: " + error.message);
+            console.error("Error al procesar pedido:", error);
+            alert("No se pudo procesar la venta: " + error.message);
         } finally {
             setIsSubmitting(false);
         }
@@ -135,7 +198,11 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="🛒 Registrar Nuevo Pedido / Venta">
+        <Modal 
+            isOpen={isOpen} 
+            onClose={onClose} 
+            title={pedidoAEditar ? "📝 Editar Pedido / Venta" : "🛒 Registrar Nuevo Pedido / Venta"}
+        >
             <form onSubmit={handleSubmit}>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <div style={{ flex: 2 }}>
@@ -160,11 +227,11 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
 
                 <div style={{ display: 'flex', gap: '1rem', backgroundColor: 'var(--background-gray)', padding: '1rem', borderRadius: 'var(--border-radius-md)', marginBottom: '1rem' }}>
                     <div style={{ flex: 1 }}>
-                        <label style={labelStyle}>💧 Envases Entregados (Llenos)</label>
+                        <label style={labelStyle}>💧 Envases Entregados</label>
                         <input required style={inputStyle} type="number" min="0" name="envasesEntregados" value={formData.envasesEntregados} onChange={handleChange} />
                     </div>
                     <div style={{ flex: 1 }}>
-                        <label style={labelStyle}>🔄 Envases Recibidos (Vacíos)</label>
+                        <label style={labelStyle}>🔄 Envases Recibidos</label>
                         <input required style={inputStyle} type="number" min="0" name="envasesRecibidos" value={formData.envasesRecibidos} onChange={handleChange} />
                     </div>
                     <div style={{ flex: 1 }}>
@@ -183,7 +250,7 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
                         </select>
                     </div>
                     <div style={{ flex: 1, textAlign: 'right', paddingRight: '1rem' }}>
-                        <span style={{ fontSize: '0.875rem', color: 'var(--text-gray)' }}>Total a cobrar:</span>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-gray)' }}>Total:</span>
                         <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary-blue)' }}>
                             ${calcularTotal()}
                         </div>
@@ -207,7 +274,7 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
 
                 <div style={{ marginTop: '1rem' }}>
                     <label style={labelStyle}>Notas adicionales</label>
-                    <textarea style={{ ...inputStyle, resize: 'none' }} rows="2" name="notas" value={formData.notas} onChange={handleChange} placeholder="Ej. El cliente pagó con billete de $10.000..."></textarea>
+                    <textarea style={{ ...inputStyle, resize: 'none' }} rows="2" name="notas" value={formData.notas} onChange={handleChange} placeholder="Notas..."></textarea>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
@@ -220,15 +287,18 @@ const PedidoFormModal = ({ isOpen, onClose }) => {
                         fontWeight: '500'
                     }}>Cancelar</button>
 
-                    <button type="submit" style={{
+                    <button type="submit" disabled={isSubmitting} style={{
                         padding: '0.75rem 1.5rem',
                         border: 'none',
                         backgroundColor: 'var(--primary-blue)',
                         color: 'white',
                         borderRadius: 'var(--border-radius-md)',
-                        cursor: 'pointer',
-                        fontWeight: '500'
-                    }}>Registrar Venta</button>
+                        cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                        fontWeight: '500',
+                        opacity: isSubmitting ? 0.7 : 1
+                    }}>
+                        {isSubmitting ? 'Procesando...' : (pedidoAEditar ? 'Guardar Cambios' : 'Registrar Venta')}
+                    </button>
                 </div>
             </form>
         </Modal>
