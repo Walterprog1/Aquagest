@@ -120,6 +120,7 @@ const Dashboard = ({ user, onLogout }) => {
             <PedidosListModal 
                 isOpen={showPedidos}
                 onClose={() => setShowPedidos(false)}
+                onOpenEditPedido={openEditPedido}
             />
             <RepartosListModal
                 isOpen={showRepartos}

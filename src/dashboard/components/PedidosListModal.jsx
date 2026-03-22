@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { supabase } from '../../lib/supabase';
 
-const PedidosListModal = ({ isOpen, onClose }) => {
+const PedidosListModal = ({ isOpen, onClose, onOpenEditPedido }) => {
     const [pedidos, setPedidos] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [filtroActivo, setFiltroActivo] = useState('Todos'); // 'Todos', 'Cobro Pendiente', 'Entrega Pendiente', 'Pagados'
@@ -202,6 +202,12 @@ const PedidosListModal = ({ isOpen, onClose }) => {
                                                 {o.pago_estado?.toLowerCase() === 'pendiente' && (
                                                     <button onClick={() => confirmarPago(o.id)} style={{ padding: '4px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>Cobrado 💰</button>
                                                 )}
+                                                <button 
+                                                    onClick={() => onOpenEditPedido(o)}
+                                                    style={{ padding: '4px', backgroundColor: '#64748b', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}
+                                                >
+                                                    Editar ✏️
+                                                </button>
                                             </div>
                                             <button 
                                                 onClick={() => eliminarPedido(o.id)} 
