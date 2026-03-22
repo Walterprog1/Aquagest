@@ -4,10 +4,12 @@ import { supabase } from '../../lib/supabase';
 
 const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
     const [clientesGuardados, setClientesGuardados] = useState([]);
+    const [repartosDisponibles, setRepartosDisponibles] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [formData, setFormData] = useState({
         cliente: '',
+        repartoId: '',
         fecha: new Date().toLocaleDateString('en-CA'), // YYYY-MM-DD local
         envasesEntregados: 0,
         envasesRecibidos: 0,
@@ -24,7 +26,8 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
             } else {
                 setFormData({
                     cliente: '',
-                    fecha: new Date().toLocaleDateString('en-CA'), // YYYY-MM-DD local
+                    repartoId: '',
+                    fecha: new Date().toLocaleDateString('en-CA'),
                     envasesEntregados: 0,
                     envasesRecibidos: 0,
                     precioUnitario: 2500,
@@ -34,6 +37,13 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
             }
         }
     }, [isOpen, pedidoAEditar]);
+
+    // Recargar repartos cuando cambia la fecha
+    useEffect(() => {
+        if (isOpen && formData.fecha) {
+            cargarRepartos(formData.fecha);
+        }
+    }, [formData.fecha, isOpen]);
 
     const cargarClientes = async () => {
         const { data, error } = await supabase
@@ -46,8 +56,31 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         }
     };
 
+    const cargarRepartos = async (fecha) => {
+        try {
+            const { data, error } = await supabase
+                .from('repartos')
+                .select(`
+                    id, 
+                    zonas_reparto:zona_id (nombre),
+                    perfiles:repartidor_id (nombre, apellido)
+                `)
+                .eq('fecha', fecha);
+            
+            if (error) throw error;
+            
+            setRepartosDisponibles(data || []);
+            
+            // Auto-seleccionar si hay solo uno y no es edición
+            if (!pedidoAEditar && data && data.length === 1) {
+                setFormData(prev => ({ ...prev, repartoId: data[0].id }));
+            }
+        } catch (error) {
+            console.error("Error cargando repartos:", error);
+        }
+    };
+
     const cargarDatosPedido = async (pedido) => {
-        // Obtenemos los detalles si no vienen incluidos
         let detalles = pedido.detalles_pedido;
         if (!detalles) {
             const { data, error } = await supabase
@@ -61,9 +94,10 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
         setFormData({
             cliente: pedido.cliente_id || '',
+            repartoId: pedido.reparto_id || '',
             fecha: pedido.fecha,
             envasesEntregados: detalle.cantidad,
-            envasesRecibidos: 0,
+            envasesRecibidos: pedido.envases_recibidos || 0,
             precioUnitario: detalle.precio_unitario,
             medioPago: pedido.medio_pago || '',
             notas: pedido.notas || ''
@@ -100,11 +134,6 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("No autenticado");
 
-            // Lógica automática según instrucción del usuario:
-            // 1. Sin medio de pago -> Pendiente Entrega / Pago Pendiente
-            // 2. Efectivo o Transferencia -> Entregado / Pagado
-            // 3. Fiado -> Entregado / Pago Pendiente
-            
             let derivedEstado = 'Entregado';
             let derivedPagoEstado = 'pendiente';
 
@@ -121,18 +150,18 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
             const pedidoData = {
                 cliente_id: formData.cliente || null,
+                reparto_id: formData.repartoId || null,
                 fecha: formData.fecha,
                 total: calcularTotal(),
                 medio_pago: formData.medioPago || null,
                 estado: derivedEstado,
                 pago_estado: derivedPagoEstado,
                 notas: formData.notas,
-                user_id: user.id
+                user_id: user.id,
+                envases_recibidos: formData.envasesRecibidos
             };
 
             if (pedidoAEditar) {
-                // ACTUALIZAR PEDIDO (Mantenemos el estado actual si no queremos forzar la lógica automática en ediciones?)
-                // Por ahora, aplicamos la misma lógica para consistencia si el usuario edita el medio de pago.
                 const { error: errorUpdate } = await supabase
                     .from('pedidos')
                     .update(pedidoData)
@@ -140,7 +169,6 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
                 if (errorUpdate) throw errorUpdate;
 
-                // ACTUALIZAR DETALLE
                 const { data: detallesExistentes } = await supabase
                     .from('detalles_pedido')
                     .select('id')
@@ -159,7 +187,6 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
                 alert('¡Pedido actualizado con éxito!');
             } else {
-                // INSERTAR NUEVO PEDIDO
                 const { data: pedido, error: errorPedido } = await supabase
                     .from('pedidos')
                     .insert([pedidoData])
@@ -217,7 +244,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         >
             <form onSubmit={handleSubmit}>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                    <div style={{ flex: 2 }}>
+                    <div style={{ flex: 1.5 }}>
                         <label style={labelStyle}>Cliente *</label>
                         <select required style={inputStyle} name="cliente" value={formData.cliente} onChange={handleChange}>
                             <option value="">Buscar o seleccionar cliente...</option>
@@ -234,13 +261,25 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                     </div>
                 </div>
 
+                <div style={{ marginBottom: '1rem' }}>
+                    <label style={labelStyle}>Asignar a Reparto (Opcional)</label>
+                    <select style={inputStyle} name="repartoId" value={formData.repartoId} onChange={handleChange}>
+                        <option value="">-- Sin reparto específico --</option>
+                        {repartosDisponibles.map(rep => (
+                            <option key={rep.id} value={rep.id}>
+                                {rep.zonas_reparto?.nombre || 'Zona N/A'} - {rep.perfiles ? `${rep.perfiles.nombre} ${rep.perfiles.apellido}` : 'S/R'}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
                 <div style={{ display: 'flex', gap: '1rem', backgroundColor: 'var(--background-gray)', padding: '1rem', borderRadius: 'var(--border-radius-md)', marginBottom: '1rem' }}>
                     <div style={{ flex: 1 }}>
-                        <label style={labelStyle}>💧 Envases</label>
+                        <label style={labelStyle}>💧 Entregados</label>
                         <input required style={inputStyle} type="number" min="0" name="envasesEntregados" value={formData.envasesEntregados} onChange={handleChange} />
                     </div>
                     <div style={{ flex: 1 }}>
-                        <label style={labelStyle}>🔁 Recibidos</label>
+                        <label style={labelStyle}>🔁 Recibidos (Vacíios)</label>
                         <input required style={inputStyle} type="number" min="0" name="envasesRecibidos" value={formData.envasesRecibidos} onChange={handleChange} />
                     </div>
                     <div style={{ flex: 1 }}>

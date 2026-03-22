@@ -19,7 +19,7 @@ const ResumenRepartoModal = ({ isOpen, onClose, reparto }) => {
                 // 1. Obtener todos los pedidos asociados a este reparto
                 const { data: pedidos, error: errPedidos } = await supabase
                     .from('pedidos')
-                    .select('id, total, pago_estado, estado')
+                    .select('id, total, pago_estado, estado, envases_recibidos')
                     .eq('reparto_id', reparto.id);
 
                 if (errPedidos) throw errPedidos;
@@ -34,17 +34,30 @@ const ResumenRepartoModal = ({ isOpen, onClose, reparto }) => {
                 // 2. Obtener detalles para contar bidones
                 const { data: detalles, error: errDetalles } = await supabase
                     .from('detalles_pedido')
-                    .select('producto, cantidad')
+                    .select('pedido_id, producto, cantidad')
                     .in('pedido_id', pedidoIds);
 
                 if (errDetalles) throw errDetalles;
 
                 // 3. Cálculos
-                let bidones = 0;
+                let bidonesVendidosTotal = 0;
+                let prestadosTotal = 0;
+
+                // Agrupar cantidades entregadas por pedido_id
+                const entregadosPorPedido = {};
                 detalles.forEach(d => {
-                    // Contamos como bidón si el nombre contiene "Bidón" o "Bidon" (case insensitive)
                     if (/bid[óo]n/i.test(d.producto)) {
-                        bidones += d.cantidad;
+                        bidonesVendidosTotal += d.cantidad;
+                        entregadosPorPedido[d.pedido_id] = (entregadosPorPedido[d.pedido_id] || 0) + d.cantidad;
+                    }
+                });
+
+                // Calcular prestados: diferencia positiva entre entregado y recibido por pedido
+                pedidos.forEach(p => {
+                    const entregados = entregadosPorPedido[p.id] || 0;
+                    const recibidos = p.envases_recibidos || 0;
+                    if (entregados > recibidos) {
+                        prestadosTotal += (entregados - recibidos);
                     }
                 });
 
@@ -57,10 +70,10 @@ const ResumenRepartoModal = ({ isOpen, onClose, reparto }) => {
                     .reduce((sum, p) => sum + Number(p.total), 0);
 
                 setStats({
-                    bidonesVendidos: bidones,
+                    bidonesVendidos: bidonesVendidosTotal,
                     pagosRecibidos: pagos,
                     deudasGeneradas: deudas,
-                    bidonesPrestados: 0 // TODO: Implementar lógica de préstamos si se añade al esquema
+                    bidonesPrestados: prestadosTotal
                 });
 
             } catch (error) {
@@ -105,7 +118,7 @@ const ResumenRepartoModal = ({ isOpen, onClose, reparto }) => {
             <div style={{ marginBottom: '1.5rem', fontSize: '0.875rem', color: 'var(--text-dark)' }}>
                 <p><strong>Repartidor:</strong> {reparto.repartidorNombre || (reparto.perfiles ? `${reparto.perfiles.nombre} ${reparto.perfiles.apellido}` : 'Sin asignar')}</p>
                 <p><strong>Zona:</strong> {reparto.zonaNombre || (reparto.zonas_reparto ? reparto.zonas_reparto.nombre : 'Sin zona')}</p>
-                <p><strong>Fecha:</strong> {reparto.fecha.split('-').reverse().join('/')}</p>
+                <p><strong>Fecha:</strong> {reparto.fecha ? reparto.fecha.split('-').reverse().join('/') : 'N/A'}</p>
             </div>
 
             {isLoading ? (

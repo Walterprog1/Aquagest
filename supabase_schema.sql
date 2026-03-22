@@ -59,7 +59,8 @@ CREATE TABLE IF NOT EXISTS pedidos (
     pago_referencia_id TEXT,
     estado TEXT DEFAULT 'Pendiente',
     notas TEXT,
-    reparto_id UUID REFERENCES repartos(id) ON DELETE SET NULL
+    reparto_id UUID REFERENCES repartos(id) ON DELETE SET NULL,
+    envases_recibidos INTEGER DEFAULT 0
 );
 
 -- TABLA DE DETALLES DE PEDIDO
