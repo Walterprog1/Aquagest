@@ -190,7 +190,7 @@ const OrdersTable = ({ onOpenEditPedido }) => {
                                     <button 
                                         onClick={() => onOpenEditPedido(order)}
                                         style={actionButtonStyle}
-                                    >📝 Ver / Editar</button>
+                                    >Detalles</button>
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>No hay pedidos {activeTab.toLowerCase()}</td></tr>}
@@ -294,15 +294,10 @@ const OrdersTable = ({ onOpenEditPedido }) => {
                                     fontSize: '0.8rem',
                                     fontWeight: '500'
                                 }}
-                            >Detalles / Editar</button>
+                            >Detalles</button>
                         </div>
                     </div>
                 ))}
-                {orders.length === 0 && !isLoading && (
-                    <div style={{ padding: '2rem', textAlign: 'center', color: '#999' }}>
-                        No hay pedidos {activeTab.toLowerCase()}
-                    </div>
-                )}
             </div>
         </div>
     );
