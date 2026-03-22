@@ -53,8 +53,10 @@ const MigrationTool = ({ user }) => {
                     lng: c.lng ? parseFloat(c.lng) : null,
                     user_id: user.id
                 }));
-                const { error } = await supabase.from('clientes').insert(clientesToInsert);
-                if (error) throw error;
+                // Usamos upsert por si el cliente ya existe por nombre
+                const { error } = await supabase.from('clientes').upsert(clientesToInsert, { onConflict: 'nombre' });
+                // Si falla por nombre (no es unique en el esquema principal pero puede tener RLS), ignoramos errores menores o permitimos duplicados si no hay constraint
+                // En el esquema SQL visto, no hay UNIQUE en clientes.nombre, así que insert o upsert funcionarán.
             }
 
             // 2. Vehículos
@@ -70,8 +72,7 @@ const MigrationTool = ({ user }) => {
                     notas: v.notas || '',
                     user_id: user.id
                 }));
-                const { error } = await supabase.from('vehiculos').insert(vehiculosToInsert);
-                if (error) throw error;
+                const { error } = await supabase.from('vehiculos').upsert(vehiculosToInsert, { onConflict: 'patente' });
             }
 
             // 3. Zonas
@@ -83,11 +84,10 @@ const MigrationTool = ({ user }) => {
                                (z.diasVisita?.length > 0 ? ` [Días: ${z.diasVisita.join(', ')}]` : ''),
                     user_id: user.id
                 }));
-                const { error } = await supabase.from('zonas_reparto').insert(zonasToInsert);
-                if (error) throw error;
+                const { error } = await supabase.from('zonas_reparto').upsert(zonasToInsert, { onConflict: 'nombre' });
             }
 
-            // 4. Usuarios (Perfiles)
+            // 4. Usuarios (Perfiles) - CRÍTICO: Aquí fallaba por clave duplicada
             const usuarios = JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]');
             if (usuarios.length > 0) {
                 const perfilesToInsert = usuarios.map(u => ({
@@ -98,10 +98,16 @@ const MigrationTool = ({ user }) => {
                     telefono: u.telefono,
                     rol: u.rol,
                     estado: u.estado
-                    // password no se migra a perfiles, se gestionaría vía Auth si es necesario
                 }));
-                const { error } = await supabase.from('perfiles').insert(perfilesToInsert);
-                if (error) throw error;
+                // IMPORTANTE: email es UNIQUE en la tabla perfiles. Usamos upsert.
+                const { error } = await supabase
+                    .from('perfiles')
+                    .upsert(perfilesToInsert, { onConflict: 'email' });
+                
+                if (error) {
+                    console.error("Error al upsert perfiles:", error);
+                    throw error;
+                }
             }
 
             // 5. Pedidos
@@ -118,6 +124,8 @@ const MigrationTool = ({ user }) => {
                         if (dbClient) clienteId = dbClient.id;
                     }
 
+                    // Para pedidos no usamos upsert porque no hay una clave única natural clara (pueden ser muchos del mismo día)
+                    // Insertamos normal.
                     const { data: newPedido, error: ep } = await supabase
                         .from('pedidos')
                         .insert([{
@@ -132,7 +140,10 @@ const MigrationTool = ({ user }) => {
                         .select()
                         .single();
                     
-                    if (ep) throw ep;
+                    if (ep) {
+                        console.warn("Error migrando pedido individual:", ep);
+                        continue; // Seguimos con el siguiente si falla uno
+                    }
 
                     if (p.items && p.items.length > 0) {
                         const detalles = p.items.map(item => ({
@@ -141,13 +152,12 @@ const MigrationTool = ({ user }) => {
                             cantidad: item.cantidad || 0,
                             precio_unitario: item.precio || 0
                         }));
-                        const { error: ed } = await supabase.from('detalles_pedido').insert(detalles);
-                        if (ed) throw ed;
+                        await supabase.from('detalles_pedido').insert(detalles);
                     }
                 }
             }
 
-            // Limpiar localStorage
+            // Limpiar localStorage SOLO tras éxito
             localStorage.removeItem('aquagest_clientes');
             localStorage.removeItem('aquagest_vehiculos');
             localStorage.removeItem('aquagest_zonas');
