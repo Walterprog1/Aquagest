@@ -12,7 +12,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         envasesEntregados: 0,
         envasesRecibidos: 0,
         precioUnitario: 2500,
-        medioPago: 'efectivo',
+        medioPago: '',
         notas: ''
     });
 
@@ -28,7 +28,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                     envasesEntregados: 0,
                     envasesRecibidos: 0,
                     precioUnitario: 2500,
-                    medioPago: 'efectivo',
+                    medioPago: '',
                     notas: ''
                 });
             }
@@ -65,7 +65,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
             envasesEntregados: detalle.cantidad,
             envasesRecibidos: 0, // No persistido en este esquema
             precioUnitario: detalle.precio_unitario,
-            medioPago: pedido.medio_pago,
+            medioPago: pedido.medio_pago || '',
             notas: pedido.notas || ''
         });
     };
@@ -94,6 +94,12 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        if (!formData.medioPago) {
+            alert("Por favor seleccione un medio de pago");
+            return;
+        }
+
         setIsSubmitting(true);
 
         try {
@@ -244,6 +250,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                     <div style={{ flex: 2 }}>
                         <label style={labelStyle}>Medio de Pago *</label>
                         <select required style={{ ...inputStyle, marginBottom: 0 }} name="medioPago" value={formData.medioPago} onChange={handleChange}>
+                            <option value="">Seleccionar...</option>
                             <option value="efectivo">Efectivo 💵</option>
                             <option value="transferencia">Transferencia 📱</option>
                             <option value="fiado">Pendiente de Pago / Fiado 📉</option>
