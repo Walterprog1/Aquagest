@@ -13,6 +13,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         envasesRecibidos: 0,
         precioUnitario: 2500,
         medioPago: '',
+        estado: 'Entregado',
         notas: ''
     });
 
@@ -29,6 +30,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                     envasesRecibidos: 0,
                     precioUnitario: 2500,
                     medioPago: '',
+                    estado: 'Entregado',
                     notas: ''
                 });
             }
@@ -66,6 +68,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
             envasesRecibidos: 0, // No persistido en este esquema
             precioUnitario: detalle.precio_unitario,
             medioPago: pedido.medio_pago || '',
+            estado: pedido.estado || 'Entregado',
             notas: pedido.notas || ''
         });
     };
@@ -105,7 +108,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                 fecha: formData.fecha,
                 total: calcularTotal(),
                 medio_pago: formData.medioPago || null,
-                estado: pedidoAEditar ? pedidoAEditar.estado : 'Entregado',
+                estado: formData.estado,
                 // Si el medio de pago es efectivo, marcamos como pagado. 
                 // Si es transferencia, fiado o está vacío, marcamos como pendiente.
                 pago_estado: formData.medioPago === 'efectivo' ? 'pagado' : 'pendiente',
@@ -168,7 +171,11 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
                 if (errorDetalle) throw errorDetalle;
 
-                alert(formData.medioPago === 'transferencia' ? '¡Venta registrada! El sistema buscará el pago automáticamente.' : '¡Venta registrada con éxito!');
+                const message = formData.estado === 'Entregado' 
+                    ? (formData.medioPago === 'transferencia' ? '¡Venta registrada! El sistema buscará el pago automáticamente.' : '¡Venta registrada con éxito!')
+                    : '¡Pedido tomado con éxito! Quedará pendiente de entrega.';
+                
+                alert(message);
             }
             
             onClose();
@@ -179,6 +186,10 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const toggleEstado = (nuevoEstado) => {
+        setFormData(prev => ({ ...prev, estado: nuevoEstado }));
     };
 
     const inputStyle = {
@@ -198,13 +209,51 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         fontSize: '0.875rem'
     };
 
+    const pillButtonStyle = (isActive, activeColor) => ({
+        flex: 1,
+        padding: '0.75rem',
+        border: '1px solid ' + (isActive ? activeColor : '#e2e8f0'),
+        backgroundColor: isActive ? activeColor : 'white',
+        color: isActive ? 'white' : '#64748b',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        fontWeight: '600',
+        fontSize: '0.85rem',
+        transition: 'all 0.2s',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '8px'
+    });
+
     return (
         <Modal 
             isOpen={isOpen} 
             onClose={onClose} 
-            title={pedidoAEditar ? "📝 Editar Pedido / Venta" : "🛒 Registrar Nuevo Pedido / Venta"}
+            title={pedidoAEditar ? "📝 Editar Pedido / Venta" : "🛒 Registrar Nuevo Registro"}
         >
             <form onSubmit={handleSubmit}>
+                {/* Selector de Estado de Entrega */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={labelStyle}>Estado de la Entrega</label>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button 
+                            type="button" 
+                            onClick={() => toggleEstado('Entregado')}
+                            style={pillButtonStyle(formData.estado === 'Entregado', '#10b981')}
+                        >
+                            ✅ Ya Entregado (Venta)
+                        </button>
+                        <button 
+                            type="button" 
+                            onClick={() => toggleEstado('Pendiente')}
+                            style={pillButtonStyle(formData.estado === 'Pendiente', '#3b82f6')}
+                        >
+                            🚚 Pendiente (Pedido)
+                        </button>
+                    </div>
+                </div>
+
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <div style={{ flex: 2 }}>
                         <label style={labelStyle}>Cliente *</label>
@@ -276,7 +325,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
                 <div style={{ marginTop: '1rem' }}>
                     <label style={labelStyle}>Notas adicionales</label>
-                    <textarea style={{ ...inputStyle, resize: 'none' }} rows="2" name="notas" value={formData.notas} placeholder="Notas..."></textarea>
+                    <textarea style={{ ...inputStyle, resize: 'none' }} rows="2" name="notas" value={formData.notas} onChange={handleChange} placeholder="Notas..."></textarea>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
@@ -299,7 +348,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         fontWeight: '500',
                         opacity: isSubmitting ? 0.7 : 1
                     }}>
-                        {isSubmitting ? 'Procesando...' : (pedidoAEditar ? 'Guardar Cambios' : 'Registrar Venta')}
+                        {isSubmitting ? 'Procesando...' : (pedidoAEditar ? 'Guardar Cambios' : (formData.estado === 'Entregado' ? 'Registrar Venta' : 'Tomar Pedido'))}
                     </button>
                 </div>
             </form>
