@@ -14,6 +14,8 @@ import PedidoFormModal from './components/PedidoFormModal';
 import DispensersListModal from './components/DispensersListModal';
 import WhatsappMassiveModal from './components/WhatsappMassiveModal';
 import PedidosListModal from './components/PedidosListModal';
+import RepartosListModal from './components/RepartosListModal';
+import ResumenRepartoModal from './components/ResumenRepartoModal';
 
 const Dashboard = ({ user, onLogout }) => {
     const [showClientes, setShowClientes] = React.useState(false);
@@ -23,7 +25,11 @@ const Dashboard = ({ user, onLogout }) => {
     const [showDispensers, setShowDispensers] = React.useState(false);
     const [showMassiveWA, setShowMassiveWA] = React.useState(false);
     const [showPedidos, setShowPedidos] = React.useState(false);
+    const [showRepartos, setShowRepartos] = React.useState(false);
     
+    // Modal de Resumen Detallado de un Reparto
+    const [repartoEnDetalle, setRepartoEnDetalle] = React.useState(null);
+
     // Modal de Edición/Creación de Pedidos
     const [isPedidoModalOpen, setIsPedidoModalOpen] = React.useState(false);
     const [pedidoAEditar, setPedidoAEditar] = React.useState(null);
@@ -78,7 +84,10 @@ const Dashboard = ({ user, onLogout }) => {
                 />
 
                 <div className="dashboard-grid">
-                    <TodayDeliveries />
+                    <TodayDeliveries 
+                        onOpenHistory={() => setShowRepartos(true)} 
+                        onOpenResumen={(r) => setRepartoEnDetalle(r)}
+                    />
                     <OrdersTable onOpenEditPedido={openEditPedido} />
                     <MapWidget />
                 </div>
@@ -111,6 +120,16 @@ const Dashboard = ({ user, onLogout }) => {
             <PedidosListModal 
                 isOpen={showPedidos}
                 onClose={() => setShowPedidos(false)}
+            />
+            <RepartosListModal
+                isOpen={showRepartos}
+                onClose={() => setShowRepartos(false)}
+                onOpenResumen={(r) => setRepartoEnDetalle(r)}
+            />
+            <ResumenRepartoModal
+                isOpen={!!repartoEnDetalle}
+                onClose={() => setRepartoEnDetalle(null)}
+                reparto={repartoEnDetalle}
             />
             <PedidoFormModal
                 isOpen={isPedidoModalOpen}

@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import ResumenRepartoModal from './ResumenRepartoModal';
 import { supabase } from '../../lib/supabase';
 
-const TodayDeliveries = () => {
-    const [selectedReparto, setSelectedReparto] = useState(null);
+const TodayDeliveries = ({ onOpenHistory, onOpenResumen }) => {
     const [repartos, setRepartos] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -25,7 +23,6 @@ const TodayDeliveries = () => {
 
             if (error) throw error;
             
-            // Mapear para mantener compatibilidad con lo que espera el Modal si es necesario
             const mapped = (data || []).map(r => ({
                 ...r,
                 repartidorNombre: r.perfiles ? `${r.perfiles.nombre} ${r.perfiles.apellido}` : 'Sin asignar',
@@ -42,9 +39,7 @@ const TodayDeliveries = () => {
 
     useEffect(() => {
         cargarRepartos();
-
-        // Suscripción en tiempo real opcional, o polling
-        const interval = setInterval(cargarRepartos, 10000); // 10s para no saturar
+        const interval = setInterval(cargarRepartos, 15000);
         return () => clearInterval(interval);
     }, []);
 
@@ -71,7 +66,7 @@ const TodayDeliveries = () => {
                         key={reparto.id}
                         className="reparto-card"
                         style={{ cursor: 'pointer', transition: 'transform 0.2s', marginBottom: '0.75rem' }}
-                        onClick={() => setSelectedReparto(reparto)}
+                        onClick={() => onOpenResumen(reparto)}
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div>
@@ -102,24 +97,23 @@ const TodayDeliveries = () => {
                 ))
             )}
 
-            <button style={{
-                width: '100%',
-                padding: '0.75rem',
-                backgroundColor: 'rgba(255,255,255,0.5)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--border-radius-md)',
-                cursor: 'pointer',
-                fontWeight: '500',
-                marginTop: '1rem'
-            }}>
+            <button 
+                onClick={onOpenHistory}
+                style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    border: '1px solid rgba(255,255,255,0.3)',
+                    color: 'white',
+                    borderRadius: 'var(--border-radius-md)',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    marginTop: '1rem',
+                    transition: 'all 0.2s'
+                }}
+            >
                 Ver todos los repartos &gt;
             </button>
-
-            <ResumenRepartoModal
-                isOpen={!!selectedReparto}
-                onClose={() => setSelectedReparto(null)}
-                reparto={selectedReparto}
-            />
         </div>
     );
 };
