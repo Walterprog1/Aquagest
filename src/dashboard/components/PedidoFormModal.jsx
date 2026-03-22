@@ -94,12 +94,6 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        if (!formData.medioPago) {
-            alert("Por favor seleccione un medio de pago");
-            return;
-        }
-
         setIsSubmitting(true);
 
         try {
@@ -110,9 +104,11 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                 cliente_id: formData.cliente || null,
                 fecha: formData.fecha,
                 total: calcularTotal(),
-                medio_pago: formData.medioPago,
+                medio_pago: formData.medioPago || null,
                 estado: pedidoAEditar ? pedidoAEditar.estado : 'Entregado',
-                pago_estado: (formData.medioPago === 'transferencia' || formData.medioPago === 'fiado') ? 'pendiente' : 'pagado',
+                // Si el medio de pago es efectivo, marcamos como pagado. 
+                // Si es transferencia, fiado o está vacío, marcamos como pendiente.
+                pago_estado: formData.medioPago === 'efectivo' ? 'pagado' : 'pendiente',
                 notas: formData.notas,
                 user_id: user.id
             };
@@ -126,7 +122,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
                 if (errorUpdate) throw errorUpdate;
 
-                // ACTUALIZAR DETALLE (Asumimos el primer detalle como el principal)
+                // ACTUALIZAR DETALLE
                 const { data: detallesExistentes } = await supabase
                     .from('detalles_pedido')
                     .select('id')
@@ -142,7 +138,6 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         .eq('id', detallesExistentes[0].id);
                     if (errorUpdateDetalle) throw errorUpdateDetalle;
                 } else {
-                    // Si por alguna razón no tiene detalles, los creamos
                     await supabase.from('detalles_pedido').insert([{
                         pedido_id: pedidoAEditar.id,
                         producto: 'Bidón 20L',
@@ -248,9 +243,9 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <div style={{ flex: 2 }}>
-                        <label style={labelStyle}>Medio de Pago *</label>
-                        <select required style={{ ...inputStyle, marginBottom: 0 }} name="medioPago" value={formData.medioPago} onChange={handleChange}>
-                            <option value="">Seleccionar...</option>
+                        <label style={labelStyle}>Medio de Pago</label>
+                        <select style={{ ...inputStyle, marginBottom: 0 }} name="medioPago" value={formData.medioPago} onChange={handleChange}>
+                            <option value="">Seleccionar después...</option>
                             <option value="efectivo">Efectivo 💵</option>
                             <option value="transferencia">Transferencia 📱</option>
                             <option value="fiado">Pendiente de Pago / Fiado 📉</option>
@@ -281,7 +276,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
                 <div style={{ marginTop: '1rem' }}>
                     <label style={labelStyle}>Notas adicionales</label>
-                    <textarea style={{ ...inputStyle, resize: 'none' }} rows="2" name="notas" value={formData.notas} onChange={handleChange} placeholder="Notas..."></textarea>
+                    <textarea style={{ ...inputStyle, resize: 'none' }} rows="2" name="notas" value={formData.notas} placeholder="Notas..."></textarea>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
