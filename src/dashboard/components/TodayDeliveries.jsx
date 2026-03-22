@@ -102,14 +102,23 @@ const TodayDeliveries = ({ onOpenHistory, onOpenResumen }) => {
                 style={{
                     width: '100%',
                     padding: '0.75rem',
-                    backgroundColor: 'rgba(255,255,255,0.2)',
-                    border: '1px solid rgba(255,255,255,0.3)',
-                    color: 'white',
+                    backgroundColor: 'white',
+                    border: '1px solid var(--border-color)',
+                    color: 'var(--primary-blue)',
                     borderRadius: 'var(--border-radius-md)',
                     cursor: 'pointer',
                     fontWeight: '600',
                     marginTop: '1rem',
+                    boxShadow: 'var(--shadow-sm)',
                     transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => {
+                    e.target.style.backgroundColor = 'var(--primary-blue)';
+                    e.target.style.color = 'white';
+                }}
+                onMouseOut={(e) => {
+                    e.target.style.backgroundColor = 'white';
+                    e.target.style.color = 'var(--primary-blue)';
                 }}
             >
                 Ver todos los repartos &gt;
