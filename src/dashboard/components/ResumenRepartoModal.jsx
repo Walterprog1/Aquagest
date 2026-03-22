@@ -105,7 +105,7 @@ const ResumenRepartoModal = ({ isOpen, onClose, reparto }) => {
             <div style={{ marginBottom: '1.5rem', fontSize: '0.875rem', color: 'var(--text-dark)' }}>
                 <p><strong>Repartidor:</strong> {reparto.repartidorNombre || (reparto.perfiles ? `${reparto.perfiles.nombre} ${reparto.perfiles.apellido}` : 'Sin asignar')}</p>
                 <p><strong>Zona:</strong> {reparto.zonaNombre || (reparto.zonas_reparto ? reparto.zonas_reparto.nombre : 'Sin zona')}</p>
-                <p><strong>Fecha:</strong> {new Date(reparto.fecha).toLocaleDateString()}</p>
+                <p><strong>Fecha:</strong> {reparto.fecha.split('-').reverse().join('/')}</p>
             </div>
 
             {isLoading ? (

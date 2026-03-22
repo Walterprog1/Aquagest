@@ -92,7 +92,9 @@ const RepartosListModal = ({ isOpen, onClose, onOpenResumen }) => {
                             {repartos.map(item => (
                                 <tr key={item.id} style={{ borderBottom: '1px solid #f8f8f8' }}>
                                     <td style={{ padding: '12px 8px' }}>
-                                        <div style={{ fontWeight: '600' }}>{new Date(item.fecha).toLocaleDateString()}</div>
+                                        <div style={{ fontWeight: '600' }}>
+                                            {item.fecha.split('-').reverse().join('/')}
+                                        </div>
                                         <div style={{ fontSize: '0.7rem', color: '#888' }}>ID: {item.id.slice(0, 8)}</div>
                                     </td>
                                     <td style={{ padding: '12px 8px' }}>

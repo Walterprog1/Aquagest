@@ -213,7 +213,7 @@ const OrdersTable = ({ onOpenEditPedido }) => {
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#666' }}>
                             <span>📍 {order.clientes?.direccion || 'Retiro local'}</span>
-                            <span>{new Date(order.fecha).toLocaleDateString()}</span>
+                            <span>{order.fecha ? order.fecha.split('-').reverse().join('/') : '-'}</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
                              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>

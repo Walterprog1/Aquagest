@@ -8,7 +8,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
     const [formData, setFormData] = useState({
         cliente: '',
-        fecha: new Date().toISOString().split('T')[0],
+        fecha: new Date().toLocaleDateString('en-CA'), // YYYY-MM-DD local
         envasesEntregados: 0,
         envasesRecibidos: 0,
         precioUnitario: 2500,
@@ -24,7 +24,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
             } else {
                 setFormData({
                     cliente: '',
-                    fecha: new Date().toISOString().split('T')[0],
+                    fecha: new Date().toLocaleDateString('en-CA'), // YYYY-MM-DD local
                     envasesEntregados: 0,
                     envasesRecibidos: 0,
                     precioUnitario: 2500,
