@@ -36,6 +36,27 @@ const RepartosListModal = ({ isOpen, onClose, onOpenResumen }) => {
         }
     }, [isOpen]);
 
+    const eliminarReparto = async (reparto) => {
+        const confirmacion = window.confirm(`¿Estás seguro de que deseas eliminar el reparto del día ${new Date(reparto.fecha).toLocaleDateString()}? Los pedidos asociados NO se borrarán.`);
+        
+        if (!confirmacion) return;
+
+        try {
+            const { error } = await supabase
+                .from('repartos')
+                .delete()
+                .eq('id', reparto.id);
+
+            if (error) throw error;
+            
+            alert('Reparto eliminado correctamente.');
+            cargarRepartos(); // Recargar la lista
+        } catch (error) {
+            console.error("Error al eliminar reparto:", error);
+            alert('Error al eliminar el reparto.');
+        }
+    };
+
     const getStatusStyle = (status) => {
         const base = {
             fontSize: '0.7rem',
@@ -45,7 +66,7 @@ const RepartosListModal = ({ isOpen, onClose, onOpenResumen }) => {
             textTransform: 'uppercase'
         };
 
-        if (status === 'finalizado') {
+        if (status === 'finalizado' || status === 'completado') {
             return { ...base, backgroundColor: '#d1fae5', color: '#065f46' };
         }
         return { ...base, backgroundColor: '#fef3c7', color: '#92400e' };
@@ -64,7 +85,7 @@ const RepartosListModal = ({ isOpen, onClose, onOpenResumen }) => {
                                 <th style={{ padding: '12px 8px' }}>Zona / Vehículo</th>
                                 <th style={{ padding: '12px 8px' }}>Repartidor</th>
                                 <th style={{ padding: '12px 8px' }}>Estado</th>
-                                <th style={{ padding: '12px 8px' }}>Acción</th>
+                                <th style={{ padding: '12px 8px' }}>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -88,11 +109,11 @@ const RepartosListModal = ({ isOpen, onClose, onOpenResumen }) => {
                                             {item.estado}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '12px 8px' }}>
+                                    <td style={{ padding: '12px 8px', display: 'flex', gap: '8px' }}>
                                         <button 
                                             onClick={() => onOpenResumen(item)}
                                             style={{
-                                                padding: '4px 8px',
+                                                padding: '6px 10px',
                                                 backgroundColor: 'var(--primary-blue)',
                                                 color: 'white',
                                                 border: 'none',
@@ -103,8 +124,27 @@ const RepartosListModal = ({ isOpen, onClose, onOpenResumen }) => {
                                                 alignItems: 'center',
                                                 gap: '4px'
                                             }}
+                                            title="Ver Resumen"
                                         >
-                                            📋 Resumen
+                                            📋
+                                        </button>
+                                        <button 
+                                            onClick={() => eliminarReparto(item)}
+                                            style={{
+                                                padding: '6px 10px',
+                                                backgroundColor: '#fee2e2',
+                                                color: '#dc2626',
+                                                border: '1px solid #fecaca',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer',
+                                                fontSize: '0.75rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}
+                                            title="Eliminar Reparto"
+                                        >
+                                            🗑️
                                         </button>
                                     </td>
                                 </tr>
