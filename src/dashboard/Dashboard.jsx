@@ -13,6 +13,7 @@ import UsuariosListModal from './components/UsuariosListModal';
 import PedidoFormModal from './components/PedidoFormModal';
 import DispensersListModal from './components/DispensersListModal';
 import WhatsappMassiveModal from './components/WhatsappMassiveModal';
+import PedidosListModal from './components/PedidosListModal';
 
 const Dashboard = ({ user, onLogout }) => {
     const [showClientes, setShowClientes] = React.useState(false);
@@ -21,6 +22,7 @@ const Dashboard = ({ user, onLogout }) => {
     const [showUsuarios, setShowUsuarios] = React.useState(false);
     const [showDispensers, setShowDispensers] = React.useState(false);
     const [showMassiveWA, setShowMassiveWA] = React.useState(false);
+    const [showPedidos, setShowPedidos] = React.useState(false);
     
     // Modal de Edición/Creación de Pedidos
     const [isPedidoModalOpen, setIsPedidoModalOpen] = React.useState(false);
@@ -52,7 +54,7 @@ const Dashboard = ({ user, onLogout }) => {
                     onOpenVehiculos={() => setShowVehiculos(true)}
                     onOpenZonas={() => setShowZonas(true)}
                     onOpenUsuarios={() => setShowUsuarios(true)}
-                    onOpenPendientes={() => {}} // No longer needed here as a separate modal
+                    onOpenPendientes={() => setShowPedidos(true)}
                     onOpenDispensers={() => setShowDispensers(true)}
                 />
 
@@ -105,6 +107,10 @@ const Dashboard = ({ user, onLogout }) => {
             <WhatsappMassiveModal
                 isOpen={showMassiveWA}
                 onClose={() => setShowMassiveWA(false)}
+            />
+            <PedidosListModal 
+                isOpen={showPedidos}
+                onClose={() => setShowPedidos(false)}
             />
             <PedidoFormModal
                 isOpen={isPedidoModalOpen}
