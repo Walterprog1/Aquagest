@@ -32,23 +32,22 @@ const StatCard = ({ title, value, colorClass, linkLabel, onClick, onSecondaryCli
 );
 
 const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuarios, onOpenPendientes, onOpenDispensers, onOpenOperaciones }) => {
-    const [stats, setStats] = useState({
-        pedidosPendientes: 0,
-        clientesRegistrados: 0,
-        vehiculosRegistrados: 0,
-        zonasRegistradas: 0,
-        usuariosRegistrados: 0,
-        ingresoDia: 0,
-        dispensersTotal: 0,
-        dispensersInstalados: 0,
-        balanceCaja: 0
-    });
+    const [filtroPeriodo, setFiltroPeriodo] = useState('total');
 
     useEffect(() => {
         const calcularStats = async () => {
             try {
                 const hoy = new Date().toISOString().split('T')[0];
                 
+                // Cálculo de límites de fechas
+                const fechaActual = new Date();
+                const hace7Dias = new Date();
+                hace7Dias.setDate(fechaActual.getDate() - 7);
+                const isoHace7Dias = hace7Dias.toISOString().split('T')[0];
+                
+                const esteMes = hoy.substring(0, 7); // YYYY-MM
+                const esteAnio = hoy.substring(0, 4); // YYYY
+
                 const [
                     { data: pedidos },
                     { count: clientes },
@@ -62,15 +61,15 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
                     supabase.from('vehiculos').select('*', { count: 'exact', head: true }),
                     supabase.from('zonas_reparto').select('*', { count: 'exact', head: true }),
                     supabase.from('dispensers').select('estado'),
-                    supabase.from('operaciones').select('tipo, monto')
+                    supabase.from('operaciones').select('tipo, monto, fecha')
                 ]);
 
-                // Cálculo de ingresos hoy
+                // Cálculo de ingresos hoy (para la tarjeta de gestión si fuera necesario, pero la usamos para pedidos)
                 const income = pedidos
                     ?.filter(o => o.fecha === hoy && o.estado !== 'Anulado')
                     .reduce((acc, curr) => acc + (curr.total || 0), 0) || 0;
 
-                // Cálculo de pedidos pendientes (No entregados O No pagados)
+                // Cálculo de pedidos pendientes
                 const pendientes = pedidos
                     ?.filter(o => 
                         (o.estado?.toLowerCase() === 'pendiente') || 
@@ -81,14 +80,25 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
                 const totalDispensers = dispensers?.length || 0;
                 const instalados = dispensers?.filter(d => d.estado === 'instalado').length || 0;
 
-                // Cálculo de balance de caja (operaciones manuales)
-                const balance = operaciones?.reduce((acc, op) => {
+                // Cálculo de balance de caja filtrado por período
+                const balance = (operaciones || []).reduce((acc, op) => {
                     const monto = Number(op.monto) || 0;
+                    const fechaOp = op.fecha;
+                    
+                    // Aplicar filtro de período
+                    let cumpleFiltro = true;
+                    if (filtroPeriodo === 'hoy') cumpleFiltro = (fechaOp === hoy);
+                    else if (filtroPeriodo === 'semana') cumpleFiltro = (fechaOp >= isoHace7Dias);
+                    else if (filtroPeriodo === 'mes') cumpleFiltro = (fechaOp && fechaOp.startsWith(esteMes));
+                    else if (filtroPeriodo === 'anio') cumpleFiltro = (fechaOp && fechaOp.startsWith(esteAnio));
+
+                    if (!cumpleFiltro) return acc;
+
                     if (op.tipo === 'ingreso') return acc + monto;
                     if (op.tipo === 'gasto') return acc - monto;
                     if (op.tipo === 'ajuste') return acc + monto;
                     return acc;
-                }, 0) || 0;
+                }, 0);
 
                 setStats({
                     pedidosPendientes: pendientes,
@@ -107,9 +117,9 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
         };
 
         calcularStats();
-        const interval = setInterval(calcularStats, 15000); // 15 segundos
+        const interval = setInterval(calcularStats, 15000);
         return () => clearInterval(interval);
-    }, []);
+    }, [filtroPeriodo]);
 
     return (
         <div className="stats-grid">
@@ -121,7 +131,32 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
                 onClick={onOpenPendientes}
             />
             <StatCard
-                title="Caja y Movimientos"
+                title={
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                        <span>Caja y Movimientos</span>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                            {['hoy', 'semana', 'mes', 'anio', 'total'].map(p => (
+                                <button
+                                    key={p}
+                                    onClick={(e) => { e.stopPropagation(); setFiltroPeriodo(p); }}
+                                    style={{
+                                        padding: '2px 6px',
+                                        fontSize: '0.65rem',
+                                        borderRadius: '4px',
+                                        border: 'none',
+                                        backgroundColor: filtroPeriodo === p ? 'rgba(255,255,255,0.3)' : 'transparent',
+                                        color: 'white',
+                                        cursor: 'pointer',
+                                        fontWeight: '700',
+                                        textTransform: 'uppercase'
+                                    }}
+                                >
+                                    {p.charAt(0)}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                }
                 value={`$${stats.balanceCaja.toLocaleString()}`}
                 colorClass={stats.balanceCaja >= 0 ? "green" : "red"}
                 linkLabel="Ver historial de caja"

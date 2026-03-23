@@ -6,6 +6,7 @@ const OperacionesListModal = ({ isOpen, onClose }) => {
     const [operaciones, setOperaciones] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [filtroTipo, setFiltroTipo] = useState('todos');
+    const [filtroPeriodo, setFiltroPeriodo] = useState('total');
     const [searchTerm, setSearchTerm] = useState('');
 
     const cargarOperaciones = async () => {
@@ -55,8 +56,24 @@ const OperacionesListModal = ({ isOpen, onClose }) => {
     };
 
     const filtrarOperaciones = () => {
-        if (!searchTerm) return operaciones;
-        return operaciones.filter(op => 
+        const hoy = new Date().toISOString().split('T')[0];
+        const fechaActual = new Date();
+        const hace7Dias = new Date();
+        hace7Dias.setDate(fechaActual.getDate() - 7);
+        const isoHace7Dias = hace7Dias.toISOString().split('T')[0];
+        const esteMes = hoy.substring(0, 7);
+        const esteAnio = hoy.substring(0, 4);
+
+        let filtradas = operaciones;
+
+        // Filtrar por período
+        if (filtroPeriodo === 'hoy') filtradas = filtradas.filter(op => op.fecha === hoy);
+        else if (filtroPeriodo === 'semana') filtradas = filtradas.filter(op => op.fecha >= isoHace7Dias);
+        else if (filtroPeriodo === 'mes') filtradas = filtradas.filter(op => op.fecha?.startsWith(esteMes));
+        else if (filtroPeriodo === 'anio') filtradas = filtradas.filter(op => op.fecha?.startsWith(esteAnio));
+
+        if (!searchTerm) return filtradas;
+        return filtradas.filter(op => 
             op.concepto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             op.categoria?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             op.entidad_referencia?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -109,6 +126,21 @@ const OperacionesListModal = ({ isOpen, onClose }) => {
                         <option value="ingreso">Solo Ingresos</option>
                         <option value="gasto">Solo Gastos</option>
                         <option value="ajuste">Solo Ajustes</option>
+                    </select>
+                    <select
+                        value={filtroPeriodo}
+                        onChange={(e) => setFiltroPeriodo(e.target.value)}
+                        style={{
+                            padding: '0.6rem',
+                            borderRadius: 'var(--border-radius-md)',
+                            border: '1px solid var(--border-color)'
+                        }}
+                    >
+                        <option value="total">Balance Total</option>
+                        <option value="hoy">Solo Hoy</option>
+                        <option value="semana">Últimos 7 días</option>
+                        <option value="mes">Este Mes</option>
+                        <option value="anio">Este Año</option>
                     </select>
                 </div>
 
