@@ -44,7 +44,6 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                 .eq('fecha', fecha);
             
             if (error) throw error;
-            
             setRepartosDisponibles(data || []);
             
             // Auto-seleccionar si hay solo uno y no es edición
@@ -56,17 +55,18 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         }
     };
 
-    // Lógica robusta de inicialización del Modal
+    // EFECTO ÚNICO DE MONTAJE (Gracias a la 'key' en Dashboard.jsx)
     useEffect(() => {
         if (isOpen) {
-            const inicializarModal = async () => {
+            const inicializar = async () => {
                 setIsLoadingData(true);
-                
-                // 1. Cargar clientes siempre
+                console.log("[PedidoFormModal] Inicializando...", { pedidoAEditar });
+
+                // 1. Cargar lista de clientes
                 await cargarClientes();
 
                 if (pedidoAEditar) {
-                    // 2. MODO EDICIÓN
+                    // MODO EDICIÓN
                     let detalles = pedidoAEditar.detalles_pedido;
                     if (!detalles || detalles.length === 0) {
                         const { data, error } = await supabase
@@ -76,28 +76,40 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         if (!error) detalles = data;
                     }
 
-                    const detalle = (detalles && detalles.length > 0) ? detalles[0] : { cantidad: 0, precio_unitario: 2500 };
-                    
-                    // Normalizar fecha YYYY-MM-DD
-                    const cleanFecha = pedidoAEditar.fecha ? (pedidoAEditar.fecha.includes('T') ? pedidoAEditar.fecha.split('T')[0] : pedidoAEditar.fecha) : '';
+                    const detalle = (detalles && detalles.length > 0) ? detalles[0] : null;
+                    console.log("[PedidoFormModal] Detalle encontrado:", detalle);
 
-                    // Cargar repartos para la fecha del pedido ANTES de setFormData para que el select encuentre el ID
+                    const cleanFecha = pedidoAEditar.fecha ? (pedidoAEditar.fecha.includes('T') ? pedidoAEditar.fecha.split('T')[0] : pedidoAEditar.fecha) : '';
+                    
+                    // Cargar repartos para la fecha del pedido
                     if (cleanFecha) {
                         await cargarRepartos(cleanFecha);
                     }
 
-                    setFormData({
-                        cliente: pedidoAEditar.cliente_id || '',
-                        repartoId: pedidoAEditar.reparto_id || '',
+                    // Mapeo defensivo de campos (soporta snake_case y camelCase por si acaso)
+                    const clienteId = pedidoAEditar.cliente_id || pedidoAEditar.clienteId || '';
+                    const repartoId = pedidoAEditar.reparto_id || pedidoAEditar.repartoId || '';
+                    const envRecibidos = pedidoAEditar.envases_recibidos ?? pedidoAEditar.envasesRecibidos ?? 0;
+                    const medioPago = pedidoAEditar.medio_pago || pedidoAEditar.medioPago || '';
+                    
+                    const cantEntregada = detalle ? (detalle.cantidad ?? 0) : 0;
+                    const preUnitario = detalle ? (detalle.precio_unitario ?? 2500) : 2500;
+
+                    const newFormData = {
+                        cliente: clienteId,
+                        repartoId: repartoId,
                         fecha: cleanFecha,
-                        envasesEntregados: Number(detalle.cantidad) || 0,
-                        envasesRecibidos: Number(pedidoAEditar.envases_recibidos) || 0,
-                        precioUnitario: Number(detalle.precio_unitario) || 2500,
-                        medioPago: pedidoAEditar.medio_pago || '',
+                        envasesEntregados: Number(cantEntregada),
+                        envasesRecibidos: Number(envRecibidos),
+                        precioUnitario: Number(preUnitario),
+                        medioPago: medioPago,
                         notas: pedidoAEditar.notas || ''
-                    });
+                    };
+
+                    console.log("[PedidoFormModal] Seteando formData edición:", newFormData);
+                    setFormData(newFormData);
                 } else {
-                    // 3. MODO CREACIÓN
+                    // MODO CREACIÓN
                     const hoy = new Date().toLocaleDateString('en-CA');
                     setFormData({
                         cliente: '',
@@ -112,25 +124,19 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                     setRepartosDisponibles([]);
                     await cargarRepartos(hoy);
                 }
-                
                 setIsLoadingData(false);
             };
 
-            inicializarModal();
+            inicializar();
         }
-    }, [isOpen, pedidoAEditar]);
-
-    // Recargar repartos SOLO si el usuario cambia manualmente la fecha en el modal abierto
-    const handleFechaChange = async (newFecha) => {
-        setFormData(prev => ({ ...prev, fecha: newFecha }));
-        await cargarRepartos(newFecha);
-    };
+    }, [isOpen]); // Solo depende de isOpen porque la key ya maneja los cambios de pedidoAEditar
 
     const handleChange = (e) => {
         const { name, value } = e.target;
 
         if (name === 'fecha') {
-            handleFechaChange(value);
+            setFormData(prev => ({ ...prev, fecha: value }));
+            cargarRepartos(value);
             return;
         }
 
@@ -272,7 +278,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
             {isLoadingData ? (
                 <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
                     <div style={{ marginBottom: '1rem', fontSize: '2rem' }}>⌛</div>
-                    <div style={{ fontWeight: '500' }}>Cargando datos del pedido...</div>
+                    <div style={{ fontWeight: '500' }}>Sincronizando datos...</div>
                 </div>
             ) : (
                 <form onSubmit={handleSubmit}>
@@ -341,7 +347,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
                     <div style={{ marginTop: '1.5rem' }}>
                         <label style={labelStyle}>Notas adicionales</label>
-                        <textarea style={{ ...inputStyle, resize: 'none' }} rows="2" name="notas" value={formData.notas} onChange={handleChange} placeholder="Opcional..."></textarea>
+                        <textarea style={{ ...inputStyle, resize: 'none' }} rows="2" name="notes" value={formData.notas} onChange={handleChange} placeholder="Opcional..."></textarea>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>

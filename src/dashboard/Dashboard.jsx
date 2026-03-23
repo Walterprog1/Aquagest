@@ -133,8 +133,12 @@ const Dashboard = ({ user, onLogout }) => {
                 reparto={repartoEnDetalle}
             />
             <PedidoFormModal
+                key={pedidoAEditar ? `edit-${pedidoAEditar.id}` : 'new-pedido'}
                 isOpen={isPedidoModalOpen}
-                onClose={() => setIsPedidoModalOpen(false)}
+                onClose={() => {
+                    setIsPedidoModalOpen(false);
+                    setPedidoAEditar(null);
+                }}
                 pedidoAEditar={pedidoAEditar}
             />
         </div>
