@@ -45,11 +45,6 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
             
             if (error) throw error;
             setRepartosDisponibles(data || []);
-            
-            // Auto-seleccionar si hay solo uno y no es edición
-            if (!pedidoAEditar && data && data.length === 1) {
-                setFormData(prev => ({ ...prev, repartoId: data[0].id }));
-            }
         } catch (error) {
             console.error("Error cargando repartos:", error);
         }
@@ -60,40 +55,58 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         if (isOpen) {
             const inicializar = async () => {
                 setIsLoadingData(true);
-                console.log("[PedidoFormModal] Inicializando...", { pedidoAEditar });
-
-                // 1. Cargar lista de clientes
+                
+                // 1. Cargar lista de clientes siempre
                 await cargarClientes();
 
                 if (pedidoAEditar) {
-                    // MODO EDICIÓN
-                    let detalles = pedidoAEditar.detalles_pedido;
-                    if (!detalles || detalles.length === 0) {
-                        const { data, error } = await supabase
-                            .from('detalles_pedido')
-                            .select('*')
-                            .eq('pedido_id', pedidoAEditar.id);
-                        if (!error) detalles = data;
+                    console.log("[PedidoFormModal] Cargando edición para ID:", pedidoAEditar.id);
+
+                    // 2. RECUPERACION MANUAL Y DINAMICA DE DETALLES PARA EVITAR FALLOS DE JOIN
+                    // Esto garantiza que siempre tengamos la información más reciente y estructurada
+                    const { data: detallesVivos, error: errDetalles } = await supabase
+                        .from('detalles_pedido')
+                        .select('*')
+                        .eq('pedido_id', pedidoAEditar.id);
+
+                    if (errDetalles) {
+                        console.error("[PedidoFormModal] Error recuperando detalles:", errDetalles);
                     }
 
-                    const detalle = (detalles && detalles.length > 0) ? detalles[0] : null;
-                    console.log("[PedidoFormModal] Detalle encontrado:", detalle);
+                    // Priorizamos los detalles recién traídos, luego los pasados por prop, y finalmente un default
+                    const detalles = (detallesVivos && detallesVivos.length > 0) 
+                        ? detallesVivos 
+                        : (pedidoAEditar.detalles_pedido || []);
 
+                    const detalle = detalles.length > 0 ? detalles[0] : null;
+                    
                     const cleanFecha = pedidoAEditar.fecha ? (pedidoAEditar.fecha.includes('T') ? pedidoAEditar.fecha.split('T')[0] : pedidoAEditar.fecha) : '';
                     
-                    // Cargar repartos para la fecha del pedido
                     if (cleanFecha) {
                         await cargarRepartos(cleanFecha);
                     }
 
-                    // Mapeo defensivo de campos (soporta snake_case y camelCase por si acaso)
+                    // Mapeo exhaustivo y ultra-defensivo
                     const clienteId = pedidoAEditar.cliente_id || pedidoAEditar.clienteId || '';
                     const repartoId = pedidoAEditar.reparto_id || pedidoAEditar.repartoId || '';
+                    
+                    // IMPORTANTE: Envases recibidos y medio de pago (estos sabemos que se conservan bien)
                     const envRecibidos = pedidoAEditar.envases_recibidos ?? pedidoAEditar.envasesRecibidos ?? 0;
                     const medioPago = pedidoAEditar.medio_pago || pedidoAEditar.medioPago || '';
                     
-                    const cantEntregada = detalle ? (detalle.cantidad ?? 0) : 0;
-                    const preUnitario = detalle ? (detalle.precio_unitario ?? 2500) : 2500;
+                    // EL PROBLEMA: Estos dos campos a veces fallan. Usamos el detalle vivo o el pedido.total como respaldo
+                    let cantEntregada = 0;
+                    let preUnitario = 2500;
+
+                    if (detalle) {
+                        cantEntregada = detalle.cantidad ?? 0;
+                        preUnitario = detalle.precio_unitario ?? 2500;
+                    } else if (pedidoAEditar.total > 0) {
+                        // Respaldo de emergencia: si el total existe pero el detalle no se unió, intentamos deducir
+                        // (esto solo ocurre en casos de inconsistencia de red/join de Supabase)
+                        preUnitario = 2500; // Asumimos precio base y calculamos cantidad aproximada si fuera necesario
+                        cantEntregada = Math.round(pedidoAEditar.total / preUnitario) || 0;
+                    }
 
                     const newFormData = {
                         cliente: clienteId,
@@ -106,8 +119,9 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         notas: pedidoAEditar.notas || ''
                     };
 
-                    console.log("[PedidoFormModal] Seteando formData edición:", newFormData);
                     setFormData(newFormData);
+                    console.log("[PedidoFormModal] Formulario cargado:", newFormData);
+
                 } else {
                     // MODO CREACIÓN
                     const hoy = new Date().toLocaleDateString('en-CA');
@@ -129,7 +143,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
             inicializar();
         }
-    }, [isOpen]); // Solo depende de isOpen porque la key ya maneja los cambios de pedidoAEditar
+    }, [isOpen]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -278,7 +292,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
             {isLoadingData ? (
                 <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
                     <div style={{ marginBottom: '1rem', fontSize: '2rem' }}>⌛</div>
-                    <div style={{ fontWeight: '500' }}>Sincronizando datos...</div>
+                    <div style={{ fontWeight: '500' }}>Sincronizando información...</div>
                 </div>
             ) : (
                 <form onSubmit={handleSubmit}>
