@@ -28,7 +28,9 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         
         if (!error) {
             setClientesGuardados(data || []);
+            return data || [];
         }
+        return [];
     };
 
     // Carga de Repartos (Dependiente de la fecha)
@@ -55,90 +57,78 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         if (isOpen) {
             const inicializar = async () => {
                 setIsLoadingData(true);
-                
-                // 1. Cargar lista de clientes siempre
-                await cargarClientes();
+                try {
+                    // 1. Cargar lista de clientes PRIMERO para tener los precios especiales
+                    const clientesActuales = await cargarClientes();
 
-                if (pedidoAEditar) {
-                    console.log("[PedidoFormModal] Cargando edición para ID:", pedidoAEditar.id);
+                    if (pedidoAEditar && pedidoAEditar.id) {
+                        // 2. RECUPERACION ATÓMICA: Pedimos el pedido con sus detalles
+                        const { data: pReal, error: errP } = await supabase
+                            .from('pedidos')
+                            .select('*, detalles_pedido(*)')
+                            .eq('id', pedidoAEditar.id)
+                            .single();
 
-                    // 2. RECUPERACION MANUAL Y DINAMICA DE DETALLES PARA EVITAR FALLOS DE JOIN
-                    // Esto garantiza que siempre tengamos la información más reciente y estructurada
-                    const { data: detallesVivos, error: errDetalles } = await supabase
-                        .from('detalles_pedido')
-                        .select('*')
-                        .eq('pedido_id', pedidoAEditar.id);
+                        if (errP) throw errP;
 
-                    if (errDetalles) {
-                        console.error("[PedidoFormModal] Error recuperando detalles:", errDetalles);
+                        // 3. Obtener detalles y precio sugerido por cliente
+                        const detalles = pReal.detalles_pedido || [];
+                        const detalle = detalles.length > 0 ? detalles[0] : null;
+                        
+                        // Buscamos el precio especial del cliente
+                        const clienteData = clientesActuales.find(c => c.id === pReal.cliente_id);
+                        const precioSugerido = clienteData?.precio_especial ? Number(clienteData.precio_especial) : 2500;
+
+                        // 4. Lógica de respaldo inteligente para evitar el "Error del 4" (9000/2500 = 3.6 -> 4)
+                        let cantEntregada = 0;
+                        let preUnitario = precioSugerido;
+
+                        if (detalle) {
+                            cantEntregada = detalle.cantidad;
+                            preUnitario = detalle.precio_unitario;
+                        } else if (pReal.total > 0) {
+                            // Si el detalle falló pero el total existe, deducimos usando el precio sugerido del cliente
+                            preUnitario = precioSugerido;
+                            cantEntregada = Math.round(pReal.total / preUnitario) || 0;
+                        }
+
+                        const cleanFecha = pReal.fecha ? (pReal.fecha.includes('T') ? pReal.fecha.split('T')[0] : pReal.fecha) : '';
+                        
+                        if (cleanFecha) {
+                            await cargarRepartos(cleanFecha);
+                        }
+
+                        setFormData({
+                            cliente: pReal.cliente_id || '',
+                            repartoId: pReal.reparto_id || '',
+                            fecha: cleanFecha,
+                            envasesEntregados: Number(cantEntregada),
+                            envasesRecibidos: Number(pReal.envases_recibidos) || 0,
+                            precioUnitario: Number(preUnitario),
+                            medioPago: pReal.medio_pago || '',
+                            notas: pReal.notas || ''
+                        });
+                    } else {
+                        // MODO CREACIÓN
+                        const hoy = new Date().toLocaleDateString('en-CA');
+                        setFormData({
+                            cliente: '',
+                            repartoId: '',
+                            fecha: hoy,
+                            envasesEntregados: 0,
+                            envasesRecibidos: 0,
+                            precioUnitario: 2500,
+                            medioPago: '',
+                            notas: ''
+                        });
+                        setRepartosDisponibles([]);
+                        await cargarRepartos(hoy);
                     }
-
-                    // Priorizamos los detalles recién traídos, luego los pasados por prop, y finalmente un default
-                    const detalles = (detallesVivos && detallesVivos.length > 0) 
-                        ? detallesVivos 
-                        : (pedidoAEditar.detalles_pedido || []);
-
-                    const detalle = detalles.length > 0 ? detalles[0] : null;
-                    
-                    const cleanFecha = pedidoAEditar.fecha ? (pedidoAEditar.fecha.includes('T') ? pedidoAEditar.fecha.split('T')[0] : pedidoAEditar.fecha) : '';
-                    
-                    if (cleanFecha) {
-                        await cargarRepartos(cleanFecha);
-                    }
-
-                    // Mapeo exhaustivo y ultra-defensivo
-                    const clienteId = pedidoAEditar.cliente_id || pedidoAEditar.clienteId || '';
-                    const repartoId = pedidoAEditar.reparto_id || pedidoAEditar.repartoId || '';
-                    
-                    // IMPORTANTE: Envases recibidos y medio de pago (estos sabemos que se conservan bien)
-                    const envRecibidos = pedidoAEditar.envases_recibidos ?? pedidoAEditar.envasesRecibidos ?? 0;
-                    const medioPago = pedidoAEditar.medio_pago || pedidoAEditar.medioPago || '';
-                    
-                    // EL PROBLEMA: Estos dos campos a veces fallan. Usamos el detalle vivo o el pedido.total como respaldo
-                    let cantEntregada = 0;
-                    let preUnitario = 2500;
-
-                    if (detalle) {
-                        cantEntregada = detalle.cantidad ?? 0;
-                        preUnitario = detalle.precio_unitario ?? 2500;
-                    } else if (pedidoAEditar.total > 0) {
-                        // Respaldo de emergencia: si el total existe pero el detalle no se unió, intentamos deducir
-                        // (esto solo ocurre en casos de inconsistencia de red/join de Supabase)
-                        preUnitario = 2500; // Asumimos precio base y calculamos cantidad aproximada si fuera necesario
-                        cantEntregada = Math.round(pedidoAEditar.total / preUnitario) || 0;
-                    }
-
-                    const newFormData = {
-                        cliente: clienteId,
-                        repartoId: repartoId,
-                        fecha: cleanFecha,
-                        envasesEntregados: Number(cantEntregada),
-                        envasesRecibidos: Number(envRecibidos),
-                        precioUnitario: Number(preUnitario),
-                        medioPago: medioPago,
-                        notas: pedidoAEditar.notas || ''
-                    };
-
-                    setFormData(newFormData);
-                    console.log("[PedidoFormModal] Formulario cargado:", newFormData);
-
-                } else {
-                    // MODO CREACIÓN
-                    const hoy = new Date().toLocaleDateString('en-CA');
-                    setFormData({
-                        cliente: '',
-                        repartoId: '',
-                        fecha: hoy,
-                        envasesEntregados: 0,
-                        envasesRecibidos: 0,
-                        precioUnitario: 2500,
-                        medioPago: '',
-                        notas: ''
-                    });
-                    setRepartosDisponibles([]);
-                    await cargarRepartos(hoy);
+                } catch (err) {
+                    console.error("[PedidoFormModal] Error fatal en inicialización:", err);
+                } finally {
+                    setIsLoadingData(false);
                 }
-                setIsLoadingData(false);
             };
 
             inicializar();
@@ -329,15 +319,15 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                     <div style={{ display: 'flex', gap: '1rem', backgroundColor: 'var(--background-gray)', padding: '1rem', borderRadius: 'var(--border-radius-md)', marginBottom: '1rem' }}>
                         <div style={{ flex: 1 }}>
                             <label style={labelStyle}>💧 Entregados</label>
-                            <input required style={inputStyle} type="number" min="0" name="envasesEntregados" value={formData.envasesEntregados} onChange={handleChange} />
+                            <input required style={inputStyle} type="number" min="0" name="envasesEntregados" value={formData.envasesEntregados} onChange={handleChange} autoComplete="off" />
                         </div>
                         <div style={{ flex: 1 }}>
                             <label style={labelStyle}>🔁 Recibidos (Vacíos)</label>
-                            <input required style={inputStyle} type="number" min="0" name="envasesRecibidos" value={formData.envasesRecibidos} onChange={handleChange} />
+                            <input required style={inputStyle} type="number" min="0" name="envasesRecibidos" value={formData.envasesRecibidos} onChange={handleChange} autoComplete="off" />
                         </div>
                         <div style={{ flex: 1 }}>
                             <label style={labelStyle}>💲 Precio Un.</label>
-                            <input required style={inputStyle} type="number" min="0" step="1" name="precioUnitario" value={formData.precioUnitario} onChange={handleChange} />
+                            <input required style={inputStyle} type="number" min="0" step="1" name="precioUnitario" value={formData.precioUnitario} onChange={handleChange} autoComplete="off" />
                         </div>
                     </div>
 
