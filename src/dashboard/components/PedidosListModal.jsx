@@ -95,10 +95,17 @@ const PedidosListModal = ({ isOpen, onClose, onOpenEditPedido }) => {
     const eliminarPedido = async (orderId) => {
         if (!confirm('¿Estás seguro de que deseas eliminar este pedido permanentemente?')) return;
         try {
-            // Eliminamos primero los detalles (por seguridad, aunque el cascade debería funcionar)
+            // 1. Antes de borrar, intentamos limpiar la caja si existía un registro automático
+            const shortId = orderId.split('-')[0];
+            await supabase
+                .from('operaciones')
+                .delete()
+                .ilike('concepto', `%#${shortId}%`);
+
+            // 2. Eliminamos detalles
             await supabase.from('detalles_pedido').delete().eq('pedido_id', orderId);
 
-            // Eliminamos el pedido principal
+            // 3. Eliminamos el pedido principal
             const { data, error } = await supabase
                 .from('pedidos')
                 .delete()

@@ -229,6 +229,15 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         concepto: `Cobro Pedido #${pedidoAEditar.id.split('-')[0]} - ${cData?.nombre || 'S/N'}`
                     }]);
                     if (errOp) console.error("[Caja] Error al registrar ingreso automático (Edit):", errOp);
+                } 
+                // REVERSIÓN DE INGRESO (Si antes estaba pagado y ahora NO)
+                else if (derivedPagoEstado !== 'pagado' && pAntiguo?.pago_estado === 'pagado') {
+                    const shortId = pedidoAEditar.id.split('-')[0];
+                    const { error: errDelOp } = await supabase
+                        .from('operaciones')
+                        .delete()
+                        .ilike('concepto', `%#${shortId}%`);
+                    if (errDelOp) console.error("[Caja] Error al revertir ingreso automático (Edit):", errDelOp);
                 }
 
                 const { data: detallesExistentes } = await supabase
