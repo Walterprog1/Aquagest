@@ -31,7 +31,7 @@ const StatCard = ({ title, value, colorClass, linkLabel, onClick, onSecondaryCli
     </div>
 );
 
-const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuarios, onOpenPendientes, onOpenDispensers }) => {
+const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuarios, onOpenPendientes, onOpenDispensers, onOpenOperaciones }) => {
     const [stats, setStats] = useState({
         pedidosPendientes: 0,
         clientesRegistrados: 0,
@@ -40,7 +40,8 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
         usuariosRegistrados: 0,
         ingresoDia: 0,
         dispensersTotal: 0,
-        dispensersInstalados: 0
+        dispensersInstalados: 0,
+        balanceCaja: 0
     });
 
     useEffect(() => {
@@ -53,13 +54,15 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
                     { count: clientes },
                     { count: vehiculos },
                     { count: zonas },
-                    { data: dispensers }
+                    { data: dispensers },
+                    { data: operaciones }
                 ] = await Promise.all([
                     supabase.from('pedidos').select('total, fecha, estado, pago_estado'),
                     supabase.from('clientes').select('*', { count: 'exact', head: true }),
                     supabase.from('vehiculos').select('*', { count: 'exact', head: true }),
                     supabase.from('zonas_reparto').select('*', { count: 'exact', head: true }),
-                    supabase.from('dispensers').select('estado')
+                    supabase.from('dispensers').select('estado'),
+                    supabase.from('operaciones').select('tipo, monto')
                 ]);
 
                 // Cálculo de ingresos hoy
@@ -78,6 +81,15 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
                 const totalDispensers = dispensers?.length || 0;
                 const instalados = dispensers?.filter(d => d.estado === 'instalado').length || 0;
 
+                // Cálculo de balance de caja (operaciones manuales)
+                const balance = operaciones?.reduce((acc, op) => {
+                    const monto = Number(op.monto) || 0;
+                    if (op.tipo === 'ingreso') return acc + monto;
+                    if (op.tipo === 'gasto') return acc - monto;
+                    if (op.tipo === 'ajuste') return acc + monto;
+                    return acc;
+                }, 0) || 0;
+
                 setStats({
                     pedidosPendientes: pendientes,
                     clientesRegistrados: clientes || 0,
@@ -86,7 +98,8 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
                     usuariosRegistrados: 1,
                     ingresoDia: income,
                     dispensersTotal: totalDispensers,
-                    dispensersInstalados: instalados
+                    dispensersInstalados: instalados,
+                    balanceCaja: balance
                 });
             } catch (error) {
                 console.error("Error al calcular estadísticas:", error);
@@ -106,6 +119,13 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
                 colorClass="dark-blue"
                 linkLabel="Ver Listado Integral"
                 onClick={onOpenPendientes}
+            />
+            <StatCard
+                title="Caja y Movimientos"
+                value={`$${stats.balanceCaja.toLocaleString()}`}
+                colorClass={stats.balanceCaja >= 0 ? "green" : "red"}
+                linkLabel="Ver historial de caja"
+                onClick={onOpenOperaciones}
             />
             <StatCard
                 title="Clientes y Staff"

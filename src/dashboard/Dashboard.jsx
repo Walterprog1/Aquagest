@@ -12,6 +12,7 @@ import ZonasListModal from './components/ZonasListModal';
 import UsuariosListModal from './components/UsuariosListModal';
 import PedidoFormModal from './components/PedidoFormModal';
 import DispensersListModal from './components/DispensersListModal';
+import OperacionesListModal from './components/OperacionesListModal';
 import WhatsappMassiveModal from './components/WhatsappMassiveModal';
 import PedidosListModal from './components/PedidosListModal';
 import RepartosListModal from './components/RepartosListModal';
@@ -23,6 +24,7 @@ const Dashboard = ({ user, onLogout }) => {
     const [showZonas, setShowZonas] = React.useState(false);
     const [showUsuarios, setShowUsuarios] = React.useState(false);
     const [showDispensers, setShowDispensers] = React.useState(false);
+    const [showOperaciones, setShowOperaciones] = React.useState(false);
     const [showMassiveWA, setShowMassiveWA] = React.useState(false);
     const [showPedidos, setShowPedidos] = React.useState(false);
     const [showRepartos, setShowRepartos] = React.useState(false);
@@ -62,6 +64,7 @@ const Dashboard = ({ user, onLogout }) => {
                     onOpenUsuarios={() => setShowUsuarios(true)}
                     onOpenPendientes={() => setShowPedidos(true)}
                     onOpenDispensers={() => setShowDispensers(true)}
+                    onOpenOperaciones={() => setShowOperaciones(true)}
                 />
 
                 <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
@@ -112,6 +115,10 @@ const Dashboard = ({ user, onLogout }) => {
             <DispensersListModal
                 isOpen={showDispensers}
                 onClose={() => setShowDispensers(false)}
+            />
+            <OperacionesListModal
+                isOpen={showOperaciones}
+                onClose={() => setShowOperaciones(false)}
             />
             <WhatsappMassiveModal
                 isOpen={showMassiveWA}
