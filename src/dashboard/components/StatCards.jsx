@@ -33,6 +33,17 @@ const StatCard = ({ title, value, colorClass, linkLabel, onClick, onSecondaryCli
 
 const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuarios, onOpenPendientes, onOpenDispensers, onOpenOperaciones }) => {
     const [filtroPeriodo, setFiltroPeriodo] = useState('total');
+    const [stats, setStats] = useState({
+        pedidosPendientes: 0,
+        clientesRegistrados: 0,
+        vehiculosRegistrados: 0,
+        zonasRegistradas: 0,
+        usuariosRegistrados: 0,
+        ingresoDia: 0,
+        dispensersTotal: 0,
+        dispensersInstalados: 0,
+        balanceCaja: 0
+    });
 
     useEffect(() => {
         const calcularStats = async () => {
