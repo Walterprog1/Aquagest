@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import Modal from './Modal';
+import { supabase } from '../../lib/supabase';
 
 const OperacionFormModal = ({ isOpen, onClose }) => {
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         fecha: new Date().toISOString().split('T')[0],
-        tipo: 'ingreso',
+        tipo: 'gasto', // Cambiado a gasto por defecto ya que es lo más común en este modal
         categoria: '',
         monto: '',
         metodoPago: 'efectivo',
@@ -17,11 +19,39 @@ const OperacionFormModal = ({ isOpen, onClose }) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log('Guardando operación:', formData);
-        alert('Operación registrada con éxito (Simulación)');
-        onClose();
+        setIsSubmitting(true);
+
+        try {
+            // Obtener el usuario actual
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("No se pudo obtener el usuario autenticado.");
+
+            // Insertar la operación en Supabase
+            const { error } = await supabase
+                .from('operaciones')
+                .insert([{
+                    user_id: user.id,
+                    fecha: formData.fecha,
+                    tipo: formData.tipo,
+                    categoria: formData.categoria || 'Otros',
+                    monto: Number(formData.monto),
+                    metodo_pago: formData.metodoPago,
+                    entidad_referencia: formData.entidadReferencia,
+                    concepto: formData.concepto
+                }]);
+
+            if (error) throw error;
+
+            alert('Operación registrada con éxito.');
+            onClose();
+        } catch (error) {
+            console.error('Error al guardar operación:', error);
+            alert('Error al registrar la operación: ' + error.message);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const inputStyle = {
@@ -48,8 +78,8 @@ const OperacionFormModal = ({ isOpen, onClose }) => {
                     <div style={{ flex: 1 }}>
                         <label style={labelStyle}>Tipo de Operación *</label>
                         <select required style={{ ...inputStyle, marginBottom: 0 }} name="tipo" value={formData.tipo} onChange={handleChange}>
-                            <option value="ingreso">Ingreso (+)</option>
                             <option value="gasto">Gasto / Salida (-)</option>
+                            <option value="ingreso">Ingreso (+)</option>
                             <option value="ajuste">Ajuste de Saldo</option>
                         </select>
                     </div>
@@ -75,7 +105,8 @@ const OperacionFormModal = ({ isOpen, onClose }) => {
                                 <>
                                     <option value="combustible">Combustible</option>
                                     <option value="mantenimiento">Mantenimiento Vehículos</option>
-                                    <option value="proveedores">Pago a Proveedores</option>
+                                    <option value="recarga_agua">Recarga Agua</option>
+                                    <option value="bidones">Bidones / Envases</option>
                                     <option value="sueldos">Sueldos / Adelantos</option>
                                     <option value="impuestos">Impuestos / Servicios</option>
                                 </>
@@ -86,6 +117,9 @@ const OperacionFormModal = ({ isOpen, onClose }) => {
                                     <option value="venta_mostrador">Venta en Mostrador</option>
                                     <option value="otros_ingresos">Otros Ingresos</option>
                                 </>
+                            )}
+                            {formData.tipo === 'ajuste' && (
+                                <option value="ajuste_caja">Ajuste de Caja</option>
                             )}
                         </select>
                     </div>
@@ -121,16 +155,16 @@ const OperacionFormModal = ({ isOpen, onClose }) => {
                         fontWeight: '500'
                     }}>Cancelar</button>
 
-                    <button type="submit" style={{
+                    <button type="submit" disabled={isSubmitting} style={{
                         padding: '0.75rem 1.5rem',
                         border: 'none',
-                        backgroundColor: formData.tipo === 'gasto' ? '#ef4444' : 'var(--primary-blue)',
+                        backgroundColor: isSubmitting ? '#94a3b8' : (formData.tipo === 'gasto' ? '#ef4444' : 'var(--primary-blue)'),
                         color: 'white',
                         borderRadius: 'var(--border-radius-md)',
-                        cursor: 'pointer',
+                        cursor: isSubmitting ? 'not-allowed' : 'pointer',
                         fontWeight: '500'
                     }}>
-                        Registrar {formData.tipo.charAt(0).toUpperCase() + formData.tipo.slice(1)}
+                        {isSubmitting ? 'Procesando...' : `Registrar ${formData.tipo.charAt(0).toUpperCase() + formData.tipo.slice(1)}`}
                     </button>
                 </div>
             </form>
