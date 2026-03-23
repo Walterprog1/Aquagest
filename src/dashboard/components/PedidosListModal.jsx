@@ -15,7 +15,7 @@ const PedidosListModal = ({ isOpen, onClose, onOpenEditPedido }) => {
                 .select(`
                     *,
                     clientes (nombre, direccion, localidad, telefono),
-                    detalles_pedido (producto, cantidad)
+                    detalles_pedido (producto, cantidad, precio_unitario)
                 `)
                 .order('created_at', { ascending: false });
 
@@ -170,7 +170,7 @@ const PedidosListModal = ({ isOpen, onClose, onOpenEditPedido }) => {
                                 <tr key={o.id} style={{ borderBottom: '1px solid #f9f9f9' }}>
                                     <td style={{ padding: '10px' }}>
                                         <div style={{ fontWeight: '600' }}>{o.clientes?.nombre || 'C. Final'}</div>
-                                        <div style={{ fontSize: '0.75rem', color: '#888' }}>{new Date(o.created_at).toLocaleDateString()}</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#888' }}>{o.fecha ? o.fecha.split('-').reverse().join('/') : '-'}</div>
                                         <div style={{ fontSize: '0.7rem', color: '#666' }}>📍 {o.clientes?.direccion}</div>
                                     </td>
                                     <td style={{ padding: '10px' }}>

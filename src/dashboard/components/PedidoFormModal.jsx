@@ -34,6 +34,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                     medioPago: '',
                     notas: ''
                 });
+                setRepartosDisponibles([]);
             }
         }
     }, [isOpen, pedidoAEditar]);
