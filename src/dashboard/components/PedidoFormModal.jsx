@@ -347,7 +347,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
                     <div style={{ marginTop: '1.5rem' }}>
                         <label style={labelStyle}>Notas adicionales</label>
-                        <textarea style={{ ...inputStyle, resize: 'none' }} rows="2" name="notes" value={formData.notas} onChange={handleChange} placeholder="Opcional..."></textarea>
+                        <textarea style={{ ...inputStyle, resize: 'none' }} rows="2" name="notas" value={formData.notas} onChange={handleChange} placeholder="Opcional..."></textarea>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
