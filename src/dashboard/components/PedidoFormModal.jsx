@@ -274,8 +274,29 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
                 if (errorPedido) throw errorPedido;
 
+                // REGISTRO AUTOMÁTICO DE INGRESO (SOLO SI ES NUEVO Y PAGADO)
+                if (derivedPagoEstado === 'pagado') {
+                    const { data: cData } = await supabase.from('clientes').select('nombre').eq('id', formData.cliente).single();
+                    
+                    // Buscar repartidor asignado para la categoría
+                    const repartoActual = repartosDisponibles.find(r => r.id === formData.repartoId);
+                    const repartidor = repartoActual?.perfiles;
+                    const categoriaNombre = repartidor 
+                        ? `Reparto de ${repartidor.nombre} ${repartidor.apellido}` 
+                        : 'Venta Reparto';
 
-
+                    const { error: errOp } = await supabase.from('operaciones').insert([{
+                        user_id: user.id,
+                        fecha: formData.fecha,
+                        tipo: 'ingreso',
+                        categoria: categoriaNombre,
+                        monto: pedidoData.total,
+                        metodo_pago: pedidoData.medio_pago,
+                        entidad_referencia: pedido.id,
+                        concepto: cData?.nombre || 'Consumidor Final'
+                    }]);
+                    if (errOp) console.error("[Caja] Error al registrar ingreso automático (Nuevo):", errOp);
+                }
                 const { error: errorDetalle } = await supabase
                     .from('detalles_pedido')
                     .insert([{
