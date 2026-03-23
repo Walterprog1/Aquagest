@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { supabase } from '../../lib/supabase';
 
@@ -6,13 +6,28 @@ const OperacionFormModal = ({ isOpen, onClose }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         fecha: new Date().toISOString().split('T')[0],
-        tipo: 'gasto', // Cambiado a gasto por defecto ya que es lo más común en este modal
+        tipo: 'gasto',
         categoria: '',
         monto: '',
         metodoPago: 'efectivo',
         entidadReferencia: '',
         concepto: ''
     });
+
+    // Reiniciar el formulario cada vez que se abre
+    useEffect(() => {
+        if (isOpen) {
+            setFormData({
+                fecha: new Date().toISOString().split('T')[0],
+                tipo: 'gasto',
+                categoria: '',
+                monto: '',
+                metodoPago: 'efectivo',
+                entidadReferencia: '',
+                concepto: ''
+            });
+        }
+    }, [isOpen]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
