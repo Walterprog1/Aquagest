@@ -92,7 +92,7 @@ const OrdersTable = ({ onOpenEditPedido }) => {
             // 3. Registrar automáticamente en caja
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-                await supabase.from('operaciones').insert([{
+                const { error: errOp } = await supabase.from('operaciones').insert([{
                     user_id: user.id,
                     fecha: pDatos.fecha || new Date().toISOString().split('T')[0],
                     tipo: 'ingreso',
@@ -101,6 +101,7 @@ const OrdersTable = ({ onOpenEditPedido }) => {
                     metodo_pago: pDatos.medio_pago || 'efectivo',
                     concepto: `Cobro Pedido #${orderId.split('-')[0]} - ${pDatos.clientes?.nombre || 'S/N'}`
                 }]);
+                if (errOp) console.error("[Caja] Error al registrar ingreso automático (Table):", errOp);
             }
 
             cargarPedidos();

@@ -219,7 +219,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                 // REGISTRO AUTOMÁTICO DE INGRESO (SOLO SI CAMBIÓ A PAGADO)
                 if (derivedPagoEstado === 'pagado' && pAntiguo?.pago_estado !== 'pagado') {
                     const { data: cData } = await supabase.from('clientes').select('nombre').eq('id', formData.cliente).single();
-                    await supabase.from('operaciones').insert([{
+                    const { error: errOp } = await supabase.from('operaciones').insert([{
                         user_id: user.id,
                         fecha: formData.fecha,
                         tipo: 'ingreso',
@@ -228,6 +228,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         metodo_pago: pedidoData.medio_pago,
                         concepto: `Cobro Pedido #${pedidoAEditar.id.split('-')[0]} - ${cData?.nombre || 'S/N'}`
                     }]);
+                    if (errOp) console.error("[Caja] Error al registrar ingreso automático (Edit):", errOp);
                 }
 
                 const { data: detallesExistentes } = await supabase
@@ -259,7 +260,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                 // REGISTRO AUTOMÁTICO DE INGRESO (SOLO SI ES NUEVO Y PAGADO)
                 if (derivedPagoEstado === 'pagado') {
                     const { data: cData } = await supabase.from('clientes').select('nombre').eq('id', formData.cliente).single();
-                    await supabase.from('operaciones').insert([{
+                    const { error: errOp } = await supabase.from('operaciones').insert([{
                         user_id: user.id,
                         fecha: formData.fecha,
                         tipo: 'ingreso',
@@ -268,6 +269,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         metodo_pago: pedidoData.medio_pago,
                         concepto: `Venta Pedido #${pedido.id.split('-')[0]} - ${cData?.nombre || 'S/N'}`
                     }]);
+                    if (errOp) console.error("[Caja] Error al registrar ingreso automático (Nuevo):", errOp);
                 }
 
                 const { error: errorDetalle } = await supabase
