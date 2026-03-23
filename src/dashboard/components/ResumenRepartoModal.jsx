@@ -47,25 +47,27 @@ const ResumenRepartoModal = ({ isOpen, onClose, reparto }) => {
                 const entregadosPorPedido = {};
                 if (detalles && detalles.length > 0) {
                     detalles.forEach(d => {
-                        // Filtro más permisivo para detectar bidones (o cualquier entrega si no hay más productos)
-                        const esBidon = !d.producto || /bid[óo]n|20L|agua|unidad/i.test(d.producto);
-                        
-                        if (esBidon) {
-                            const cant = Number(d.cantidad) || 0;
-                            bidonesVendidosTotal += cant;
-                            entregadosPorPedido[d.pedido_id] = (entregadosPorPedido[d.pedido_id] || 0) + cant;
+                        // Solo procesar si el pedido padre está ENTREGADO
+                        const pedidoPadre = pedidos.find(p => p.id === d.pedido_id);
+                        if (pedidoPadre && pedidoPadre.estado?.toLowerCase() === 'entregado') {
+                            const esBidon = !d.producto || /bid[óo]n|20L|agua|unidad/i.test(d.producto);
+                            if (esBidon) {
+                                const cant = Number(d.cantidad) || 0;
+                                bidonesVendidosTotal += cant;
+                                entregadosPorPedido[d.pedido_id] = (entregadosPorPedido[d.pedido_id] || 0) + cant;
+                            }
                         }
                     });
                 }
 
                 // Calcular prestados y validar pedidos sin detalles
                 pedidos.forEach(p => {
+                    // SI EL PEDIDO NO ESTÁ ENTREGADO, NO SUMA A BIDONES NI A DEUDAS
+                    if (p.estado?.toLowerCase() !== 'entregado') return;
+
                     let entregados = entregadosPorPedido[p.id] || 0;
                     
-                    // Fallback: Si no hay detalle pero hay un total > 0, intentamos estimar
-                    // Esto ayuda con registros antiguos o inconsistentes
                     if (entregados === 0 && Number(p.total) > 0) {
-                        // Estimación conservadora si falta el detalle: total / 2500 (precio base)
                         entregados = Math.round(Number(p.total) / 2500) || 1;
                         bidonesVendidosTotal += entregados;
                     }
@@ -77,11 +79,11 @@ const ResumenRepartoModal = ({ isOpen, onClose, reparto }) => {
                 });
 
                 const pagos = pedidos
-                    .filter(p => p.pago_estado === 'pagado')
+                    .filter(p => p.pago_estado?.toLowerCase() === 'pagado')
                     .reduce((sum, p) => sum + Number(p.total), 0);
 
                 const deudas = pedidos
-                    .filter(p => p.pago_estado === 'pendiente')
+                    .filter(p => p.estado?.toLowerCase() === 'entregado' && p.pago_estado?.toLowerCase() === 'pendiente')
                     .reduce((sum, p) => sum + Number(p.total), 0);
 
                 setStats({
