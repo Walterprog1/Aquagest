@@ -75,7 +75,13 @@ const OrdersTable = ({ onOpenEditPedido }) => {
             // 1. Obtener datos del pedido antes de actualizar (para el registro de caja)
             const { data: pDatos, error: errFetch } = await supabase
                 .from('pedidos')
-                .select('total, fecha, medio_pago, cliente_id, clientes(nombre)')
+                .select(`
+                    total, fecha, medio_pago, cliente_id, 
+                    clientes(nombre),
+                    repartos(
+                        perfiles:repartidor_id(nombre, apellido)
+                    )
+                `)
                 .eq('id', orderId)
                 .single();
             
@@ -92,11 +98,16 @@ const OrdersTable = ({ onOpenEditPedido }) => {
             // 3. Registrar automáticamente en caja
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
+                const repartidor = pDatos.repartos?.perfiles;
+                const categoriaNombre = repartidor 
+                    ? `Reparto de ${repartidor.nombre} ${repartidor.apellido}` 
+                    : 'Venta Reparto';
+
                 const { error: errOp } = await supabase.from('operaciones').insert([{
                     user_id: user.id,
                     fecha: pDatos.fecha || new Date().toISOString().split('T')[0],
                     tipo: 'ingreso',
-                    categoria: 'venta_mostrador',
+                    categoria: categoriaNombre,
                     monto: pDatos.total,
                     metodo_pago: pDatos.medio_pago || 'efectivo',
                     concepto: `Cobro Pedido #${orderId.split('-')[0]} - ${pDatos.clientes?.nombre || 'S/N'}`

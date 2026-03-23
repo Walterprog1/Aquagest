@@ -37,13 +37,19 @@ const PedidosListModal = ({ isOpen, onClose, onOpenEditPedido }) => {
     const confirmarPago = async (orderId) => {
         if (!confirm('¿Confirmas que has recibido el pago de este pedido?')) return;
         try {
-            // 1. Obtener datos detallados del pedido para el registro de caja
+            // 1. Obtener datos antes de actualizar
             const { data: pDatos, error: errFetch } = await supabase
                 .from('pedidos')
-                .select('total, fecha, medio_pago, clientes(nombre)')
+                .select(`
+                    total, fecha, medio_pago,
+                    clientes(nombre),
+                    repartos(
+                        perfiles:repartidor_id(nombre, apellido)
+                    )
+                `)
                 .eq('id', orderId)
                 .single();
-
+            
             if (errFetch) throw errFetch;
 
             // 2. Marcar como pagado
@@ -57,11 +63,16 @@ const PedidosListModal = ({ isOpen, onClose, onOpenEditPedido }) => {
             // 3. Registro automático en historial de caja
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
+                const repartidor = pDatos.repartos?.perfiles;
+                const categoriaNombre = repartidor 
+                    ? `Reparto de ${repartidor.nombre} ${repartidor.apellido}` 
+                    : 'Venta Reparto';
+
                 const { error: errOp } = await supabase.from('operaciones').insert([{
                     user_id: user.id,
                     fecha: pDatos.fecha || new Date().toISOString().split('T')[0],
                     tipo: 'ingreso',
-                    categoria: 'venta_mostrador',
+                    categoria: categoriaNombre,
                     monto: pDatos.total,
                     metodo_pago: pDatos.medio_pago || 'efectivo',
                     concepto: `Cobro Pedido #${orderId.split('-')[0]} - ${pDatos.clientes?.nombre || 'S/N'}`
