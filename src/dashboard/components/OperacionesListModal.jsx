@@ -159,7 +159,6 @@ const OperacionesListModal = ({ isOpen, onClose }) => {
                                     <td style={{ padding: '0.75rem' }}>{op.categoria}</td>
                                     <td style={{ padding: '0.75rem' }}>
                                         <div>{op.concepto}</div>
-                                        {op.entidad_referencia && <small style={{ color: 'var(--text-gray)' }}>Ref: {op.entidad_referencia}</small>}
                                     </td>
                                     <td style={{ padding: '0.75rem', fontWeight: 'bold' }}>
                                         ${Number(op.monto).toLocaleString()}
