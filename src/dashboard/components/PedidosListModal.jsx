@@ -75,7 +75,8 @@ const PedidosListModal = ({ isOpen, onClose, onOpenEditPedido }) => {
                     categoria: categoriaNombre,
                     monto: pDatos.total,
                     metodo_pago: pDatos.medio_pago || 'efectivo',
-                    concepto: `Cobro Pedido #${orderId.split('-')[0]} - ${pDatos.clientes?.nombre || 'S/N'}`
+                    entidad_referencia: orderId,
+                    concepto: pDatos.clientes?.nombre || 'Consumidor Final'
                 }]);
                 if (errOp) console.error("[Caja] Error al registrar ingreso automático (Modal List):", errOp);
             }
@@ -107,11 +108,10 @@ const PedidosListModal = ({ isOpen, onClose, onOpenEditPedido }) => {
         if (!confirm('¿Estás seguro de que deseas eliminar este pedido permanentemente?')) return;
         try {
             // 1. Antes de borrar, intentamos limpiar la caja si existía un registro automático
-            const shortId = orderId.split('-')[0];
             await supabase
                 .from('operaciones')
                 .delete()
-                .ilike('concepto', `%#${shortId}%`);
+                .eq('entidad_referencia', orderId);
 
             // 2. Eliminamos detalles
             await supabase.from('detalles_pedido').delete().eq('pedido_id', orderId);

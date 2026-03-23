@@ -234,17 +234,17 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         categoria: categoriaNombre,
                         monto: pedidoData.total,
                         metodo_pago: pedidoData.medio_pago,
-                        concepto: `Cobro Pedido #${pedidoAEditar.id.split('-')[0]} - ${cData?.nombre || 'S/N'}`
+                        entidad_referencia: pedidoAEditar.id, // Guardar el ID del pedido como referencia
+                        concepto: cData?.nombre || 'Consumidor Final' // Dejar solo el nombre del cliente
                     }]);
                     if (errOp) console.error("[Caja] Error al registrar ingreso automático (Edit):", errOp);
                 } 
                 // REVERSIÓN DE INGRESO (Si antes estaba pagado y ahora NO)
                 else if (derivedPagoEstado !== 'pagado' && pAntiguo?.pago_estado === 'pagado') {
-                    const shortId = pedidoAEditar.id.split('-')[0];
                     const { error: errDelOp } = await supabase
                         .from('operaciones')
                         .delete()
-                        .ilike('concepto', `%#${shortId}%`);
+                        .eq('entidad_referencia', pedidoAEditar.id); // Borrar por la referencia del pedido
                     if (errDelOp) console.error("[Caja] Error al revertir ingreso automático (Edit):", errDelOp);
                 }
 

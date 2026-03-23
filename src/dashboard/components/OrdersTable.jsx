@@ -110,7 +110,8 @@ const OrdersTable = ({ onOpenEditPedido }) => {
                     categoria: categoriaNombre,
                     monto: pDatos.total,
                     metodo_pago: pDatos.medio_pago || 'efectivo',
-                    concepto: `Cobro Pedido #${orderId.split('-')[0]} - ${pDatos.clientes?.nombre || 'S/N'}`
+                    entidad_referencia: orderId,
+                    concepto: pDatos.clientes?.nombre || 'Consumidor Final'
                 }]);
                 if (errOp) console.error("[Caja] Error al registrar ingreso automático (Table):", errOp);
             }
