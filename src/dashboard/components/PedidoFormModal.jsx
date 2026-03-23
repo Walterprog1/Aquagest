@@ -6,6 +6,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
     const [clientesGuardados, setClientesGuardados] = useState([]);
     const [repartosDisponibles, setRepartosDisponibles] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoadingData, setIsLoadingData] = useState(false);
 
     const [formData, setFormData] = useState({
         cliente: '',
@@ -18,34 +19,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         notas: ''
     });
 
-    useEffect(() => {
-        if (isOpen) {
-            cargarClientes();
-            if (pedidoAEditar) {
-                cargarDatosPedido(pedidoAEditar);
-            } else {
-                setFormData({
-                    cliente: '',
-                    repartoId: '',
-                    fecha: new Date().toLocaleDateString('en-CA'),
-                    envasesEntregados: 0,
-                    envasesRecibidos: 0,
-                    precioUnitario: 2500,
-                    medioPago: '',
-                    notas: ''
-                });
-                setRepartosDisponibles([]);
-            }
-        }
-    }, [isOpen, pedidoAEditar]);
-
-    // Recargar repartos cuando cambia la fecha
-    useEffect(() => {
-        if (isOpen && formData.fecha) {
-            cargarRepartos(formData.fecha);
-        }
-    }, [formData.fecha, isOpen]);
-
+    // Carga de Clientes (Independiente)
     const cargarClientes = async () => {
         const { data, error } = await supabase
             .from('clientes')
@@ -57,6 +31,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         }
     };
 
+    // Carga de Repartos (Dependiente de la fecha)
     const cargarRepartos = async (fecha) => {
         try {
             const { data, error } = await supabase
@@ -81,32 +56,83 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         }
     };
 
-    const cargarDatosPedido = async (pedido) => {
-        let detalles = pedido.detalles_pedido;
-        if (!detalles) {
-            const { data, error } = await supabase
-                .from('detalles_pedido')
-                .select('*')
-                .eq('pedido_id', pedido.id);
-            if (!error) detalles = data;
+    // Lógica robusta de inicialización del Modal
+    useEffect(() => {
+        if (isOpen) {
+            const inicializarModal = async () => {
+                setIsLoadingData(true);
+                
+                // 1. Cargar clientes siempre
+                await cargarClientes();
+
+                if (pedidoAEditar) {
+                    // 2. MODO EDICIÓN
+                    let detalles = pedidoAEditar.detalles_pedido;
+                    if (!detalles || detalles.length === 0) {
+                        const { data, error } = await supabase
+                            .from('detalles_pedido')
+                            .select('*')
+                            .eq('pedido_id', pedidoAEditar.id);
+                        if (!error) detalles = data;
+                    }
+
+                    const detalle = (detalles && detalles.length > 0) ? detalles[0] : { cantidad: 0, precio_unitario: 2500 };
+                    
+                    // Normalizar fecha YYYY-MM-DD
+                    const cleanFecha = pedidoAEditar.fecha ? (pedidoAEditar.fecha.includes('T') ? pedidoAEditar.fecha.split('T')[0] : pedidoAEditar.fecha) : '';
+
+                    // Cargar repartos para la fecha del pedido ANTES de setFormData para que el select encuentre el ID
+                    if (cleanFecha) {
+                        await cargarRepartos(cleanFecha);
+                    }
+
+                    setFormData({
+                        cliente: pedidoAEditar.cliente_id || '',
+                        repartoId: pedidoAEditar.reparto_id || '',
+                        fecha: cleanFecha,
+                        envasesEntregados: Number(detalle.cantidad) || 0,
+                        envasesRecibidos: Number(pedidoAEditar.envases_recibidos) || 0,
+                        precioUnitario: Number(detalle.precio_unitario) || 2500,
+                        medioPago: pedidoAEditar.medio_pago || '',
+                        notas: pedidoAEditar.notas || ''
+                    });
+                } else {
+                    // 3. MODO CREACIÓN
+                    const hoy = new Date().toLocaleDateString('en-CA');
+                    setFormData({
+                        cliente: '',
+                        repartoId: '',
+                        fecha: hoy,
+                        envasesEntregados: 0,
+                        envasesRecibidos: 0,
+                        precioUnitario: 2500,
+                        medioPago: '',
+                        notas: ''
+                    });
+                    setRepartosDisponibles([]);
+                    await cargarRepartos(hoy);
+                }
+                
+                setIsLoadingData(false);
+            };
+
+            inicializarModal();
         }
+    }, [isOpen, pedidoAEditar]);
 
-        const detalle = (detalles && detalles.length > 0) ? detalles[0] : { cantidad: 0, precio_unitario: 2500 };
-
-        setFormData({
-            cliente: pedido.cliente_id || '',
-            repartoId: pedido.reparto_id || '',
-            fecha: pedido.fecha,
-            envasesEntregados: detalle.cantidad,
-            envasesRecibidos: pedido.envases_recibidos || 0,
-            precioUnitario: detalle.precio_unitario,
-            medioPago: pedido.medio_pago || '',
-            notas: pedido.notas || ''
-        });
+    // Recargar repartos SOLO si el usuario cambia manualmente la fecha en el modal abierto
+    const handleFechaChange = async (newFecha) => {
+        setFormData(prev => ({ ...prev, fecha: newFecha }));
+        await cargarRepartos(newFecha);
     };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+
+        if (name === 'fecha') {
+            handleFechaChange(value);
+            return;
+        }
 
         if (name === 'cliente' && value) {
             const clienteSeleccionado = clientesGuardados.find(c => c.id === value);
@@ -114,7 +140,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                 setFormData(prev => ({
                     ...prev,
                     [name]: value,
-                    precioUnitario: parseFloat(clienteSeleccionado.precio_especial)
+                    precioUnitario: Number(clienteSeleccionado.precio_especial)
                 }));
                 return;
             }
@@ -124,7 +150,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
     };
 
     const calcularTotal = () => {
-        return formData.envasesEntregados * formData.precioUnitario;
+        return (Number(formData.envasesEntregados) || 0) * (Number(formData.precioUnitario) || 0);
     };
 
     const handleSubmit = async (e) => {
@@ -243,99 +269,106 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
             onClose={onClose} 
             title={pedidoAEditar ? "📝 Detalles del Registro" : "🛒 Nuevo Registro"}
         >
-            <form onSubmit={handleSubmit}>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <div style={{ flex: 1.5 }}>
-                        <label style={labelStyle}>Cliente *</label>
-                        <select required style={inputStyle} name="cliente" value={formData.cliente} onChange={handleChange}>
-                            <option value="">Buscar o seleccionar cliente...</option>
-                            {clientesGuardados.map(cliente => (
-                                <option key={cliente.id} value={cliente.id}>
-                                    {cliente.nombre} {cliente.tipo === 'comercial' ? '(Comercial)' : ''}
+            {isLoadingData ? (
+                <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                    <div style={{ marginBottom: '1rem', fontSize: '2rem' }}>⌛</div>
+                    <div style={{ fontWeight: '500' }}>Cargando datos del pedido...</div>
+                </div>
+            ) : (
+                <form onSubmit={handleSubmit}>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <div style={{ flex: 1.5 }}>
+                            <label style={labelStyle}>Cliente *</label>
+                            <select required style={inputStyle} name="cliente" value={formData.cliente} onChange={handleChange}>
+                                <option value="">Buscar o seleccionar cliente...</option>
+                                {clientesGuardados.map(cliente => (
+                                    <option key={cliente.id} value={cliente.id}>
+                                        {cliente.nombre} {cliente.tipo === 'comercial' ? '(Comercial)' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <label style={labelStyle}>Fecha *</label>
+                            <input required style={inputStyle} type="date" name="fecha" value={formData.fecha} onChange={handleChange} />
+                        </div>
+                    </div>
+
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={labelStyle}>Asignar a Reparto (Opcional)</label>
+                        <select style={inputStyle} name="repartoId" value={formData.repartoId} onChange={handleChange}>
+                            <option value="">-- Sin reparto específico --</option>
+                            {repartosDisponibles.map(rep => (
+                                <option key={rep.id} value={rep.id}>
+                                    {rep.zonas_reparto?.nombre || 'Zona N/A'} - {rep.perfiles ? `${rep.perfiles.nombre} ${rep.perfiles.apellido}` : 'S/R'}
                                 </option>
                             ))}
                         </select>
                     </div>
-                    <div style={{ flex: 1 }}>
-                        <label style={labelStyle}>Fecha *</label>
-                        <input required style={inputStyle} type="date" name="fecha" value={formData.fecha} onChange={handleChange} />
-                    </div>
-                </div>
 
-                <div style={{ marginBottom: '1rem' }}>
-                    <label style={labelStyle}>Asignar a Reparto (Opcional)</label>
-                    <select style={inputStyle} name="repartoId" value={formData.repartoId} onChange={handleChange}>
-                        <option value="">-- Sin reparto específico --</option>
-                        {repartosDisponibles.map(rep => (
-                            <option key={rep.id} value={rep.id}>
-                                {rep.zonas_reparto?.nombre || 'Zona N/A'} - {rep.perfiles ? `${rep.perfiles.nombre} ${rep.perfiles.apellido}` : 'S/R'}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                <div style={{ display: 'flex', gap: '1rem', backgroundColor: 'var(--background-gray)', padding: '1rem', borderRadius: 'var(--border-radius-md)', marginBottom: '1rem' }}>
-                    <div style={{ flex: 1 }}>
-                        <label style={labelStyle}>💧 Entregados</label>
-                        <input required style={inputStyle} type="number" min="0" name="envasesEntregados" value={formData.envasesEntregados} onChange={handleChange} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                        <label style={labelStyle}>🔁 Recibidos (Vacíios)</label>
-                        <input required style={inputStyle} type="number" min="0" name="envasesRecibidos" value={formData.envasesRecibidos} onChange={handleChange} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                        <label style={labelStyle}>💲 Precio Un.</label>
-                        <input required style={inputStyle} type="number" min="0" step="100" name="precioUnitario" value={formData.precioUnitario} onChange={handleChange} />
-                    </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <div style={{ flex: 2 }}>
-                        <label style={labelStyle}>Método de Pago</label>
-                        <select style={{ ...inputStyle, marginBottom: 0 }} name="medioPago" value={formData.medioPago} onChange={handleChange}>
-                            <option value="">(Registrar como pedido pendiente)</option>
-                            <option value="efectivo">Efectivo 💵</option>
-                            <option value="transferencia">Transferencia 📱</option>
-                            <option value="fiado">Pendiente de Pago / Fiado 📉</option>
-                        </select>
-                    </div>
-                    <div style={{ flex: 1, textAlign: 'right', paddingRight: '1rem' }}>
-                        <span style={{ fontSize: '0.875rem', color: 'var(--text-gray)' }}>Total:</span>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary-blue)' }}>
-                            ${calcularTotal()}
+                    <div style={{ display: 'flex', gap: '1rem', backgroundColor: 'var(--background-gray)', padding: '1rem', borderRadius: 'var(--border-radius-md)', marginBottom: '1rem' }}>
+                        <div style={{ flex: 1 }}>
+                            <label style={labelStyle}>💧 Entregados</label>
+                            <input required style={inputStyle} type="number" min="0" name="envasesEntregados" value={formData.envasesEntregados} onChange={handleChange} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <label style={labelStyle}>🔁 Recibidos (Vacíos)</label>
+                            <input required style={inputStyle} type="number" min="0" name="envasesRecibidos" value={formData.envasesRecibidos} onChange={handleChange} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <label style={labelStyle}>💲 Precio Un.</label>
+                            <input required style={inputStyle} type="number" min="0" step="1" name="precioUnitario" value={formData.precioUnitario} onChange={handleChange} />
                         </div>
                     </div>
-                </div>
 
-                <div style={{ marginTop: '1.5rem' }}>
-                    <label style={labelStyle}>Notas adicionales</label>
-                    <textarea style={{ ...inputStyle, resize: 'none' }} rows="2" name="notas" value={formData.notas} onChange={handleChange} placeholder="Opcional..."></textarea>
-                </div>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <div style={{ flex: 2 }}>
+                            <label style={labelStyle}>Método de Pago</label>
+                            <select style={{ ...inputStyle, marginBottom: 0 }} name="medioPago" value={formData.medioPago} onChange={handleChange}>
+                                <option value="">(Registrar como pedido pendiente)</option>
+                                <option value="efectivo">Efectivo 💵</option>
+                                <option value="transferencia">Transferencia 📱</option>
+                                <option value="fiado">Pendiente de Pago / Fiado 📉</option>
+                            </select>
+                        </div>
+                        <div style={{ flex: 1, textAlign: 'right', paddingRight: '1rem' }}>
+                            <span style={{ fontSize: '0.875rem', color: 'var(--text-gray)' }}>Total:</span>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary-blue)' }}>
+                                ${calcularTotal()}
+                            </div>
+                        </div>
+                    </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
-                    <button type="button" onClick={onClose} style={{
-                        padding: '0.75rem 1.5rem',
-                        border: '1px solid var(--border-color)',
-                        backgroundColor: 'white',
-                        borderRadius: 'var(--border-radius-md)',
-                        cursor: 'pointer',
-                        fontWeight: '500'
-                    }}>Cancelar</button>
+                    <div style={{ marginTop: '1.5rem' }}>
+                        <label style={labelStyle}>Notas adicionales</label>
+                        <textarea style={{ ...inputStyle, resize: 'none' }} rows="2" name="notas" value={formData.notas} onChange={handleChange} placeholder="Opcional..."></textarea>
+                    </div>
 
-                    <button type="submit" disabled={isSubmitting} style={{
-                        padding: '0.75rem 1.5rem',
-                        border: 'none',
-                        backgroundColor: 'var(--primary-blue)',
-                        color: 'white',
-                        borderRadius: 'var(--border-radius-md)',
-                        cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                        fontWeight: '500',
-                        opacity: isSubmitting ? 0.7 : 1
-                    }}>
-                        {isSubmitting ? 'Procesando...' : (pedidoAEditar ? 'Guardar Cambios' : 'Confirmar Registro')}
-                    </button>
-                </div>
-            </form>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
+                        <button type="button" onClick={onClose} style={{
+                            padding: '0.75rem 1.5rem',
+                            border: '1px solid var(--border-color)',
+                            backgroundColor: 'white',
+                            borderRadius: 'var(--border-radius-md)',
+                            cursor: 'pointer',
+                            fontWeight: '500'
+                        }}>Cancelar</button>
+
+                        <button type="submit" disabled={isSubmitting} style={{
+                            padding: '0.75rem 1.5rem',
+                            border: 'none',
+                            backgroundColor: 'var(--primary-blue)',
+                            color: 'white',
+                            borderRadius: 'var(--border-radius-md)',
+                            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                            fontWeight: '500',
+                            opacity: isSubmitting ? 0.7 : 1
+                        }}>
+                            {isSubmitting ? 'Procesando...' : (pedidoAEditar ? 'Guardar Cambios' : 'Confirmar Registro')}
+                        </button>
+                    </div>
+                </form>
+            )}
         </Modal>
     );
 };
