@@ -45,17 +45,32 @@ const ResumenRepartoModal = ({ isOpen, onClose, reparto }) => {
 
                 // Agrupar cantidades entregadas por pedido_id
                 const entregadosPorPedido = {};
-                detalles.forEach(d => {
-                    if (/bid[óo]n/i.test(d.producto)) {
-                        bidonesVendidosTotal += d.cantidad;
-                        entregadosPorPedido[d.pedido_id] = (entregadosPorPedido[d.pedido_id] || 0) + d.cantidad;
-                    }
-                });
+                if (detalles && detalles.length > 0) {
+                    detalles.forEach(d => {
+                        // Filtro más permisivo para detectar bidones (o cualquier entrega si no hay más productos)
+                        const esBidon = !d.producto || /bid[óo]n|20L|agua|unidad/i.test(d.producto);
+                        
+                        if (esBidon) {
+                            const cant = Number(d.cantidad) || 0;
+                            bidonesVendidosTotal += cant;
+                            entregadosPorPedido[d.pedido_id] = (entregadosPorPedido[d.pedido_id] || 0) + cant;
+                        }
+                    });
+                }
 
-                // Calcular prestados: diferencia positiva entre entregado y recibido por pedido
+                // Calcular prestados y validar pedidos sin detalles
                 pedidos.forEach(p => {
-                    const entregados = entregadosPorPedido[p.id] || 0;
-                    const recibidos = p.envases_recibidos || 0;
+                    let entregados = entregadosPorPedido[p.id] || 0;
+                    
+                    // Fallback: Si no hay detalle pero hay un total > 0, intentamos estimar
+                    // Esto ayuda con registros antiguos o inconsistentes
+                    if (entregados === 0 && Number(p.total) > 0) {
+                        // Estimación conservadora si falta el detalle: total / 2500 (precio base)
+                        entregados = Math.round(Number(p.total) / 2500) || 1;
+                        bidonesVendidosTotal += entregados;
+                    }
+
+                    const recibidos = Number(p.envases_recibidos) || 0;
                     if (entregados > recibidos) {
                         prestadosTotal += (entregados - recibidos);
                     }
