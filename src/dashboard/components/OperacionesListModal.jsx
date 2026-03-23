@@ -56,18 +56,18 @@ const OperacionesListModal = ({ isOpen, onClose }) => {
     };
 
     const filtrarOperaciones = () => {
-        const hoy = new Date().toISOString().split('T')[0];
+        const hoy = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local (no UTC)
         const fechaActual = new Date();
         const hace7Dias = new Date();
         hace7Dias.setDate(fechaActual.getDate() - 7);
-        const isoHace7Dias = hace7Dias.toISOString().split('T')[0];
+        const isoHace7Dias = hace7Dias.toLocaleDateString('en-CA');
         const esteMes = hoy.substring(0, 7);
         const esteAnio = hoy.substring(0, 4);
 
         let filtradas = operaciones;
 
-        // Filtrar por período
-        if (filtroPeriodo === 'hoy') filtradas = filtradas.filter(op => op.fecha === hoy);
+        // Filtrar por período con startsWith para tolerar variaciones de formato
+        if (filtroPeriodo === 'hoy') filtradas = filtradas.filter(op => op.fecha?.startsWith(hoy));
         else if (filtroPeriodo === 'semana') filtradas = filtradas.filter(op => op.fecha >= isoHace7Dias);
         else if (filtroPeriodo === 'mes') filtradas = filtradas.filter(op => op.fecha?.startsWith(esteMes));
         else if (filtroPeriodo === 'anio') filtradas = filtradas.filter(op => op.fecha?.startsWith(esteAnio));

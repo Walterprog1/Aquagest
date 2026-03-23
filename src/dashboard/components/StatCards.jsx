@@ -48,7 +48,8 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
     useEffect(() => {
         const calcularStats = async () => {
             try {
-                const hoy = new Date().toISOString().split('T')[0];
+                // Usar fecha LOCAL para evitar desfase UTC vs Argentina (UTC-3)
+                const hoy = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
                 
                 // Cálculo de límites de fechas
                 const fechaActual = new Date();
@@ -98,10 +99,10 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
                     
                     // Aplicar filtro de período
                     let cumpleFiltro = true;
-                    if (filtroPeriodo === 'hoy') cumpleFiltro = (fechaOp === hoy);
+                    if (filtroPeriodo === 'hoy') cumpleFiltro = (fechaOp?.startsWith(hoy));
                     else if (filtroPeriodo === 'semana') cumpleFiltro = (fechaOp >= isoHace7Dias);
-                    else if (filtroPeriodo === 'mes') cumpleFiltro = (fechaOp && fechaOp.startsWith(esteMes));
-                    else if (filtroPeriodo === 'anio') cumpleFiltro = (fechaOp && fechaOp.startsWith(esteAnio));
+                    else if (filtroPeriodo === 'mes') cumpleFiltro = (fechaOp?.startsWith(esteMes));
+                    else if (filtroPeriodo === 'anio') cumpleFiltro = (fechaOp?.startsWith(esteAnio));
 
                     if (!cumpleFiltro) return acc;
 
