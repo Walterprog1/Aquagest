@@ -37,17 +37,35 @@ const PedidosListModal = ({ isOpen, onClose, onOpenEditPedido }) => {
     const confirmarPago = async (orderId) => {
         if (!confirm('¿Confirmas que has recibido el pago de este pedido?')) return;
         try {
-            const { data, error } = await supabase
+            // 1. Obtener datos detallados del pedido para el registro de caja
+            const { data: pDatos, error: errFetch } = await supabase
+                .from('pedidos')
+                .select('total, fecha, medio_pago, clientes(nombre)')
+                .eq('id', orderId)
+                .single();
+
+            if (errFetch) throw errFetch;
+
+            // 2. Marcar como pagado
+            const { error: errUpdate } = await supabase
                 .from('pedidos')
                 .update({ pago_estado: 'pagado' })
-                .eq('id', orderId)
-                .select();
+                .eq('id', orderId);
 
-            if (error) throw error;
+            if (errUpdate) throw errUpdate;
 
-            if (!data || data.length === 0) {
-                alert("No se pudo actualizar el pago. Por favor, refresca la página.");
-                return;
+            // 3. Registro automático en historial de caja
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await supabase.from('operaciones').insert([{
+                    user_id: user.id,
+                    fecha: pDatos.fecha || new Date().toISOString().split('T')[0],
+                    tipo: 'ingreso',
+                    categoria: 'venta_mostrador',
+                    monto: pDatos.total,
+                    metodo_pago: pDatos.medio_pago || 'efectivo',
+                    concepto: `Cobro Pedido #${orderId.split('-')[0]} - ${pDatos.clientes?.nombre || 'S/N'}`
+                }]);
             }
 
             cargarPedidos();

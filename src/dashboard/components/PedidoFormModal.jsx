@@ -199,12 +199,36 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
             };
 
             if (pedidoAEditar) {
+                // Si es edición, solo registramos ingreso si ANTES NO estaba pagado y AHORA SÍ lo está.
+                // Pero según el plan simplificado, si el usuario explícitamente guarda como pagado, insertamos un registro.
+                // Para evitar duplicaciones infinitas en ediciones, solo registramos si el pago cambia de pendiente a pagado.
+                
+                const { data: pAntiguo } = await supabase
+                    .from('pedidos')
+                    .select('pago_estado')
+                    .eq('id', pedidoAEditar.id)
+                    .single();
+
                 const { error: errorUpdate } = await supabase
                     .from('pedidos')
                     .update(pedidoData)
                     .eq('id', pedidoAEditar.id);
 
                 if (errorUpdate) throw errorUpdate;
+
+                // REGISTRO AUTOMÁTICO DE INGRESO (SOLO SI CAMBIÓ A PAGADO)
+                if (derivedPagoEstado === 'pagado' && pAntiguo?.pago_estado !== 'pagado') {
+                    const { data: cData } = await supabase.from('clientes').select('nombre').eq('id', formData.cliente).single();
+                    await supabase.from('operaciones').insert([{
+                        user_id: user.id,
+                        fecha: formData.fecha,
+                        tipo: 'ingreso',
+                        categoria: 'venta_mostrador',
+                        monto: pedidoData.total,
+                        metodo_pago: pedidoData.medio_pago,
+                        concepto: `Cobro Pedido #${pedidoAEditar.id.split('-')[0]} - ${cData?.nombre || 'S/N'}`
+                    }]);
+                }
 
                 const { data: detallesExistentes } = await supabase
                     .from('detalles_pedido')
@@ -231,6 +255,20 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                     .single();
 
                 if (errorPedido) throw errorPedido;
+
+                // REGISTRO AUTOMÁTICO DE INGRESO (SOLO SI ES NUEVO Y PAGADO)
+                if (derivedPagoEstado === 'pagado') {
+                    const { data: cData } = await supabase.from('clientes').select('nombre').eq('id', formData.cliente).single();
+                    await supabase.from('operaciones').insert([{
+                        user_id: user.id,
+                        fecha: formData.fecha,
+                        tipo: 'ingreso',
+                        categoria: 'venta_mostrador',
+                        monto: pedidoData.total,
+                        metodo_pago: pedidoData.medio_pago,
+                        concepto: `Venta Pedido #${pedido.id.split('-')[0]} - ${cData?.nombre || 'S/N'}`
+                    }]);
+                }
 
                 const { error: errorDetalle } = await supabase
                     .from('detalles_pedido')
