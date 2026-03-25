@@ -96,7 +96,7 @@ const DispensersListModal = ({ isOpen, onClose }) => {
                         <thead style={{ backgroundColor: 'var(--background-gray)', textAlign: 'left' }}>
                             <tr>
                                 <th style={{ padding: '0.75rem' }}>Modelo</th>
-                                <th style={{ padding: '0.75rem' }}>Nº Serie</th>
+
                                 <th style={{ padding: '0.75rem' }}>Estado</th>
                                 <th style={{ padding: '0.75rem' }}>Ubicación / Cliente</th>
                                 <th style={{ padding: '0.75rem' }}>Acciones</th>
@@ -106,7 +106,7 @@ const DispensersListModal = ({ isOpen, onClose }) => {
                             {filteredDispensers.map(d => (
                                 <tr key={d.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                                     <td style={{ padding: '0.75rem', fontWeight: '500' }}>{d.modelo}</td>
-                                    <td style={{ padding: '0.75rem' }}><code>{d.numero_serie || 'S/N'}</code></td>
+
                                     <td style={{ padding: '0.75rem' }}>
                                         <span style={getStatusStyle(d.estado)}>{d.estado.toUpperCase()}</span>
                                     </td>
@@ -125,14 +125,16 @@ const DispensersListModal = ({ isOpen, onClose }) => {
                                             <button 
                                                 onClick={() => handleEdit(d)}
                                                 style={{ padding: '4px 8px', backgroundColor: 'transparent', border: '1px solid #356bd6', color: '#356bd6', borderRadius: '4px', cursor: 'pointer' }}
+                                                title="Editar"
                                             >
-                                                Editar
+                                                ✏️
                                             </button>
                                             <button 
                                                 onClick={() => handleDelete(d.id)}
                                                 style={{ padding: '4px 8px', backgroundColor: 'transparent', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '4px', cursor: 'pointer' }}
+                                                title="Eliminar"
                                             >
-                                                Eliminar
+                                                🗑️
                                             </button>
                                         </div>
                                     </td>
