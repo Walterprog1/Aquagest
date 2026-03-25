@@ -114,7 +114,6 @@ const DispensersListModal = ({ isOpen, onClose }) => {
                                         {d.estado === 'instalado' ? (
                                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                                                 <span style={{ fontWeight: '500' }}>📍 {d.clientes?.nombre || 'Cliente desconocido'}</span>
-                                                <span style={{ fontSize: '0.7rem', color: 'var(--text-gray)' }}>Instalado el: {d.fecha_instalacion || 'N/A'}</span>
                                             </div>
                                         ) : (
                                             <span style={{ color: 'var(--text-gray)' }}>N/A</span>
