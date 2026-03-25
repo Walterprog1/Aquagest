@@ -170,7 +170,7 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
                                         fontWeight: '700'
                                     }}
                                 >
-                                    {p.label}
+                                    {p.label + '\u200B'}
                                 </button>
                             ))}
                         </div>
