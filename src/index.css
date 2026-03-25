@@ -378,3 +378,13 @@ body {
     width: calc(50% - 0.5rem);
   }
 }
+
+/* Evitar auto-traducción en botones de periodo */
+.period-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.period-btn::after {
+  content: attr(data-label);
+}

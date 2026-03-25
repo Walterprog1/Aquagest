@@ -156,8 +156,8 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
                             ].map(p => (
                                 <button
                                     key={p.key}
-                                    className="notranslate"
-                                    translate="no"
+                                    className="period-btn"
+                                    data-label={p.label}
                                     onClick={(e) => { e.stopPropagation(); setFiltroPeriodo(p.key); }}
                                     style={{
                                         padding: '2px 6px',
@@ -170,7 +170,6 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
                                         fontWeight: '700'
                                     }}
                                 >
-                                    {p.label + '\u200B'}
                                 </button>
                             ))}
                         </div>
