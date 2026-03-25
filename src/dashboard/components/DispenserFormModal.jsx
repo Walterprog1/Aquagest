@@ -6,7 +6,7 @@ const DispenserFormModal = ({ isOpen, onClose, dispenserAEditar }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [clientes, setClientes] = useState([]);
     const [formData, setFormData] = useState({
-        modelo: 'Dispenser de Pie',
+        modelo: 'IBBL',
         numero_serie: '',
         estado: 'disponible',
         cliente_id: '',
@@ -25,7 +25,7 @@ const DispenserFormModal = ({ isOpen, onClose, dispenserAEditar }) => {
 
             if (dispenserAEditar) {
                 setFormData({
-                    modelo: dispenserAEditar.modelo || 'Dispenser de Pie',
+                    modelo: dispenserAEditar.modelo || 'IBBL',
                     numero_serie: dispenserAEditar.numero_serie || '',
                     estado: dispenserAEditar.estado || 'disponible',
                     cliente_id: dispenserAEditar.cliente_id || '',
@@ -34,7 +34,7 @@ const DispenserFormModal = ({ isOpen, onClose, dispenserAEditar }) => {
                 });
             } else {
                 setFormData({
-                    modelo: 'Dispenser de Pie',
+                    modelo: 'IBBL',
                     numero_serie: '',
                     estado: 'disponible',
                     cliente_id: '',
@@ -117,10 +117,9 @@ const DispenserFormModal = ({ isOpen, onClose, dispenserAEditar }) => {
                     <div style={{ flex: 1 }}>
                         <label style={labelStyle}>Modelo *</label>
                         <select required style={inputStyle} name="modelo" value={formData.modelo} onChange={handleChange}>
-                            <option value="Dispenser de Pie">Dispenser de Pie</option>
-                            <option value="Dispenser de Mesa">Dispenser de Mesa</option>
-                            <option value="Dispenser con Heladera">Dispenser con Heladera</option>
-                            <option value="Mate Eléctrico">Mate Eléctrico / Otros</option>
+                            <option value="IBBL">IBBL</option>
+                            <option value="Bacope">Bacope</option>
+                            <option value="Patagonia">Patagonia</option>
                         </select>
                     </div>
                     <div style={{ flex: 1 }}>
