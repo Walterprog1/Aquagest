@@ -147,23 +147,28 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                         <span>Caja y Movimientos</span>
                         <div style={{ display: 'flex', gap: '4px' }}>
-                            {['hoy', 'semana', 'mes', 'anio', 'total'].map(p => (
+                            {[
+                                { key: 'hoy', label: 'H' },
+                                { key: 'semana', label: 'S' },
+                                { key: 'mes', label: 'M' },
+                                { key: 'anio', label: 'A' },
+                                { key: 'total', label: 'T' }
+                            ].map(p => (
                                 <button
-                                    key={p}
-                                    onClick={(e) => { e.stopPropagation(); setFiltroPeriodo(p); }}
+                                    key={p.key}
+                                    onClick={(e) => { e.stopPropagation(); setFiltroPeriodo(p.key); }}
                                     style={{
                                         padding: '2px 6px',
                                         fontSize: '0.65rem',
                                         borderRadius: '4px',
                                         border: 'none',
-                                        backgroundColor: filtroPeriodo === p ? 'rgba(255,255,255,0.3)' : 'transparent',
+                                        backgroundColor: filtroPeriodo === p.key ? 'rgba(255,255,255,0.3)' : 'transparent',
                                         color: 'white',
                                         cursor: 'pointer',
-                                        fontWeight: '700',
-                                        textTransform: 'uppercase'
+                                        fontWeight: '700'
                                     }}
                                 >
-                                    {p.charAt(0)}
+                                    {p.label}
                                 </button>
                             ))}
                         </div>
