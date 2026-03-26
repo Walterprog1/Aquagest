@@ -7,6 +7,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
     const [repartosDisponibles, setRepartosDisponibles] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingData, setIsLoadingData] = useState(false);
+    const [alquilerInfo, setAlquilerInfo] = useState(null);
 
     const [formData, setFormData] = useState({
         cliente: '',
@@ -36,14 +37,21 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
     // Carga de Repartos (Dependiente de la fecha)
     const cargarRepartos = async (fecha) => {
         try {
+            const fechaSeleccionada = new Date(fecha);
+            const fechaMin = new Date(fechaSeleccionada);
+            fechaMin.setDate(fechaMin.getDate() - 7);
+            
             const { data, error } = await supabase
                 .from('repartos')
                 .select(`
                     id, 
+                    fecha,
                     zonas_reparto:zona_id (nombre),
                     perfiles:repartidor_id (nombre, apellido)
                 `)
-                .eq('fecha', fecha);
+                .gte('fecha', fechaMin.toISOString().split('T')[0])
+                .lte('fecha', fecha)
+                .order('fecha', { ascending: false });
             
             if (error) throw error;
             setRepartosDisponibles(data || []);
@@ -135,6 +143,53 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         }
     }, [isOpen]);
 
+    // Efecto para verificar si el cliente tiene dispenser y calcular cupo
+    useEffect(() => {
+        const fetchAlquiler = async () => {
+            if (!formData.cliente) {
+                setAlquilerInfo(null);
+                return;
+            }
+            try {
+                // Verificar si tiene dispenser instalado
+                const { data: dispenser } = await supabase
+                    .from('dispensers')
+                    .select('id')
+                    .eq('cliente_id', formData.cliente)
+                    .eq('estado', 'instalado')
+                    .maybeSingle();
+
+                if (dispenser) {
+                    // Contar bidones entregados este mes
+                    const mesActual = new Date().toISOString().substring(0, 7) + '-01';
+                    const { data: pedidosEsteMes } = await supabase
+                        .from('pedidos')
+                        .select('id, cantidad, detalles_pedido(producto)')
+                        .eq('cliente_id', formData.cliente)
+                        .gte('fecha', mesActual);
+
+                    let entregados = 0;
+                    pedidosEsteMes?.forEach(p => {
+                        // Excluir el pedido actual si estamos editando para no doble-contar
+                        if (pedidoAEditar && p.id === pedidoAEditar.id) return;
+                        // En la BD actual, los detalles están en detalles_pedido, pero para simplificar
+                        // sumamos 'cantidad' asumiendo bidones, ya que es el principal.
+                        entregados += (Number(p.cantidad) || 0);
+                    });
+
+                    setAlquilerInfo({ tieneDispenser: true, bidonesEntregadosEsteMes: entregados });
+                } else {
+                    setAlquilerInfo(null);
+                }
+            } catch (err) {
+                console.error("Error al buscar dispenser:", err);
+            }
+        };
+        if (isOpen) {
+            fetchAlquiler();
+        }
+    }, [formData.cliente, isOpen, pedidoAEditar]);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
 
@@ -160,7 +215,17 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
     };
 
     const calcularTotal = () => {
-        return (Number(formData.envasesEntregados) || 0) * (Number(formData.precioUnitario) || 0);
+        let cantInt = Number(formData.envasesEntregados) || 0;
+        let pUnit = Number(formData.precioUnitario) || 0;
+        
+        if (alquilerInfo && alquilerInfo.tieneDispenser) {
+            let yaEntregados = alquilerInfo.bidonesEntregadosEsteMes || 0;
+            let cupoGratisRestante = Math.max(0, 3 - yaEntregados);
+            let cobrarEnvases = Math.max(0, cantInt - cupoGratisRestante);
+            return cobrarEnvases * pUnit;
+        }
+        
+        return cantInt * pUnit;
     };
 
     const handleSubmit = async (e) => {
@@ -375,7 +440,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                             <option value="">-- Sin reparto específico --</option>
                             {repartosDisponibles.map(rep => (
                                 <option key={rep.id} value={rep.id}>
-                                    {rep.zonas_reparto?.nombre || 'Zona N/A'} - {rep.perfiles ? `${rep.perfiles.nombre} ${rep.perfiles.apellido}` : 'S/R'}
+                                    {rep.fecha?.split('T')[0]} - {rep.zonas_reparto?.nombre || 'Zona N/A'} - {rep.perfiles ? `${rep.perfiles.nombre} ${rep.perfiles.apellido}` : 'S/R'}
                                 </option>
                             ))}
                         </select>
@@ -395,6 +460,16 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                             <input required style={inputStyle} type="number" min="0" step="1" name="precioUnitario" value={formData.precioUnitario} onChange={handleChange} autoComplete="off" />
                         </div>
                     </div>
+
+                    {alquilerInfo && alquilerInfo.tieneDispenser && (
+                        <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', padding: '0.75rem', borderRadius: 'var(--border-radius-md)', marginBottom: '1rem', fontSize: '0.875rem', color: '#1e3a8a' }}>
+                            🏆 <strong>Cliente con Dispenser Alquilado.</strong> Beneficio: 3 bidones sin cargo por mes.<br/>
+                            Ya consumió <strong>{alquilerInfo.bidonesEntregadosEsteMes}</strong> de 3 este mes. 
+                            {Math.max(0, 3 - alquilerInfo.bidonesEntregadosEsteMes) > 0 
+                                ? ` (Le quedan ${Math.max(0, 3 - alquilerInfo.bidonesEntregadosEsteMes)} gratis)` 
+                                : ` (Cupo mensual agotado)`}
+                        </div>
+                    )}
 
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                         <div style={{ flex: 2 }}>

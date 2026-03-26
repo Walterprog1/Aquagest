@@ -112,6 +112,18 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
                     return acc;
                 }, 0);
 
+                // Cálculo de Alquileres Pendientes
+                const opAlquileres = operaciones?.filter(op => op.categoria === 'Alquiler Dispenser' && op.fecha >= esteMes + '-01') || [];
+                const pagados = new Set(opAlquileres.map(op => op.entidad_referencia));
+                let alquileresPendientesCount = 0;
+                
+                // Necesitamos el ID del cliente de cada dispenser instalado
+                const { data: dispensersConClientes } = await supabase.from('dispensers').select('clientes(id)').eq('estado', 'instalado');
+                dispensersConClientes?.forEach(d => {
+                    const cid = d.clientes?.id;
+                    if (cid && !pagados.has(cid)) alquileresPendientesCount++;
+                });
+
                 setStats({
                     pedidosPendientes: pendientes,
                     clientesRegistrados: clientes || 0,
@@ -121,7 +133,8 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
                     ingresoDia: income,
                     dispensersTotal: totalDispensers,
                     dispensersInstalados: instalados,
-                    balanceCaja: balance
+                    balanceCaja: balance,
+                    alquileresPendientes: alquileresPendientesCount
                 });
             } catch (error) {
                 console.error("Error al calcular estadísticas:", error);
@@ -196,7 +209,7 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
                 linkLabel="Control y Registro"
                 onClick={onOpenDispensers}
             />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
                 <StatCard
                     title="Vehículos"
                     value={stats.vehiculosRegistrados}
@@ -210,6 +223,17 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
                     colorClass="dark-blue"
                     linkLabel="Lista"
                     onClick={onOpenZonas}
+                />
+                <StatCard
+                    title="Alquileres Pend."
+                    value={stats.alquileresPendientes || 0}
+                    colorClass={(stats.alquileresPendientes || 0) > 0 ? "red" : "green"}
+                    linkLabel="Controlar"
+                    onClick={() => {
+                        // El modal se abre desde QuickActions, pero para simplificar, dispararemos una alerta o emitiremos evento.
+                        // Como no tenemos proxy directo acá, simplemente instruiremos al usuario ir a Acciones > Alquileres.
+                        alert("Podés controlar los alquileres desde Acciones Rápidas > Controlar Alquileres 📆");
+                    }}
                 />
             </div>
         </div>
