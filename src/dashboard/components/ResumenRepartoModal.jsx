@@ -50,7 +50,7 @@ const ResumenRepartoModal = ({ isOpen, onClose, reparto }) => {
                         // Solo procesar si el pedido padre está ENTREGADO
                         const pedidoPadre = pedidos.find(p => p.id === d.pedido_id);
                         if (pedidoPadre && pedidoPadre.estado?.toLowerCase() === 'entregado') {
-                            const esBidon = !d.producto || /bid[óo]n|20L|agua|unidad/i.test(d.producto);
+                            const esBidon = !d.producto || /bidon|bidón|20L|agua|unidad/i.test(d.producto);
                             if (esBidon) {
                                 const cant = Number(d.cantidad) || 0;
                                 bidonesVendidosTotal += cant;
