@@ -10,12 +10,20 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
     const fetchAlquileres = async () => {
         setIsLoading(true);
         try {
-            // 1. Obtener dispensers instalados
-            const { data: dispensers, error: dispError } = await supabase
+            // 1. Obtener dispensers (procesamos el filtro de estado en JS para más seguridad)
+            const { data: dbDispensers, error: dispError } = await supabase
                 .from('dispensers')
-                .select('*, clientes (id, nombre)')
-                .eq('estado', 'instalado');
+                .select(`
+                    *,
+                    clientes (id, nombre)
+                `);
+            
             if (dispError) throw dispError;
+
+            // Filtrar solo los instalados en el cliente
+            const dispensers = (dbDispensers || []).filter(d => 
+                d.estado?.toLowerCase() === 'instalado'
+            );
 
             // 2. Obtener operaciones "Alquiler Dispenser" del mes actual
             const mesActual = new Date().toISOString().substring(0, 7); // YYYY-MM
@@ -26,25 +34,38 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                 .select('entidad_referencia, monto')
                 .eq('categoria', 'Alquiler Dispenser')
                 .gte('fecha', inicioMes);
+            
             if (opError) throw opError;
 
-            // 3. Obtener pedidos del mes para contar bidones
+            // 3. Obtener pedidos del mes para contar bidones (vía detalles_pedido)
             const { data: pedidos, error: pedError } = await supabase
                 .from('pedidos')
-                .select('cliente_id, cantidad, producto_id, productos(categoria)')
+                .select('cliente_id, detalles_pedido(cantidad, producto)')
                 .gte('fecha', inicioMes);
+            
             if (pedError) throw pedError;
 
             // 4. Procesar y combinar datos
-            const listaProcesada = dispensers.map((disp) => {
+            const listaProcesada = (dispensers || []).map((disp) => {
                 const clienteId = disp.clientes?.id;
                 
-                // Buscar si pagó
-                const pagoRealizado = operaciones.find(op => op.entidad_referencia === clienteId);
+                // Buscar si pagó este mes
+                const pagoRealizado = (operaciones || []).find(op => op.entidad_referencia === clienteId);
                 
-                // Contar bidones
-                const pedidosCliente = pedidos.filter(p => p.cliente_id === clienteId && p.productos?.categoria?.toLowerCase().includes('bidon'));
-                const totalBidones = pedidosCliente.reduce((sum, p) => sum + p.cantidad, 0);
+                // Contar bidones entregados este mes
+                let totalBidones = 0;
+                const pedidosCliente = (pedidos || []).filter(p => p.cliente_id === clienteId);
+                
+                pedidosCliente.forEach(p => {
+                    (p.detalles_pedido || []).forEach(d => {
+                        const esBidon = d.producto?.toLowerCase().includes('bidon') || 
+                                       d.producto?.toLowerCase().includes('bidón') ||
+                                       d.producto?.toLowerCase().includes('20l');
+                        if (esBidon) {
+                            totalBidones += (Number(d.cantidad) || 0);
+                        }
+                    });
+                });
 
                 return {
                     dispenser_id: disp.id,
@@ -66,6 +87,7 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
             setAlquileres(listaProcesada);
         } catch (error) {
             console.error("Error al cargar alquileres:", error);
+            // alert("Error al cargar datos: " + error.message);
         } finally {
             setIsLoading(false);
         }
@@ -131,7 +153,9 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                 {isLoading ? (
                     <div style={{ textAlign: 'center', padding: '2rem' }}>Calculando cupos y cuotas...</div>
                 ) : filtered.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-gray)' }}>No hay clientes con dispensers encontrados.</div>
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-gray)' }}>
+                        No hay clientes con dispensers encontrados.
+                    </div>
                 ) : (
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                         <thead style={{ backgroundColor: 'var(--background-gray)', textAlign: 'left' }}>
