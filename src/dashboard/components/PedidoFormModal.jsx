@@ -98,9 +98,40 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
                         const detalle = detalles.length > 0 ? detalles[0] : null;
                         
-                        // Buscamos el precio especial del cliente
+                        // Buscamos el precio especial del cliente e info de dispenser
                         const clienteData = clientesActuales.find(c => c.id === pReal.cliente_id);
                         const precioSugerido = clienteData?.precio_especial ? Number(clienteData.precio_especial) : 2500;
+
+                        // NUEVO: Buscamos info de dispenser AQUÍ MISMO para evitar race conditions
+                        const { data: dispenser } = await supabase
+                            .from('dispensers')
+                            .select('id')
+                            .eq('cliente_id', pReal.cliente_id)
+                            .eq('estado', 'instalado')
+                            .maybeSingle();
+
+                        if (dispenser) {
+                            const mesActual = new Date().toISOString().substring(0, 7) + '-01';
+                            const { data: pedidosEsteMes } = await supabase
+                                .from('pedidos')
+                                .select('id, detalles_pedido(cantidad, producto)')
+                                .eq('cliente_id', pReal.cliente_id)
+                                .gte('fecha', mesActual);
+
+                            let entregados = 0;
+                            pedidosEsteMes?.forEach(p => {
+                                if (pedidoAEditar && p.id === pedidoAEditar.id) return;
+                                (p.detalles_pedido || []).forEach(d => {
+                                    const esBidon = d.producto?.toLowerCase().includes('bidon') || 
+                                                   d.producto?.toLowerCase().includes('bidón') ||
+                                                   d.producto?.toLowerCase().includes('20l');
+                                    if (esBidon) entregados += (Number(d.cantidad) || 0);
+                                });
+                            });
+                            setAlquilerInfo({ tieneDispenser: true, bidonesEntregadosEsteMes: entregados });
+                        } else {
+                            setAlquilerInfo(null);
+                        }
 
                         // 4. Lógica de respaldo inteligente
                         let cantEntregada = 0;
@@ -110,13 +141,9 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                             cantEntregada = detalle.cantidad;
                             preUnitario = detalle.precio_unitario;
                         } else if (pReal.total > 0) {
-                            // Deducir del total si hay detalles faltantes (migración antigua)
                             preUnitario = precioSugerido;
                             cantEntregada = Math.round(Number(pReal.total) / Number(preUnitario)) || 0;
                         } else if (pReal.total === 0 && (pReal.estado === 'Entregado' || pReal.envases_recibidos > 0)) {
-                            // CASO DISPENSER: Si no hay detalle pero hay señal de visita, 
-                            // no forzamos 0. Mantenemos el precio sugerido y permitimos edición manual.
-                            // Si antes había un valor en la lista, lo recuperamos
                             preUnitario = precioSugerido;
                             const prevCant = pedidoAEditar.detalles_pedido?.[0]?.cantidad;
                             if (prevCant) cantEntregada = prevCant;
@@ -141,6 +168,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                     } else {
                         // MODO CREACIÓN
                         const hoy = new Date().toLocaleDateString('en-CA');
+                        setAlquilerInfo(null);
                         setFormData({
                             cliente: '',
                             repartoId: '',
@@ -160,20 +188,16 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                     setIsLoadingData(false);
                 }
             };
-
             inicializar();
         }
     }, [isOpen]);
 
-    // Efecto para verificar si el cliente tiene dispenser y calcular cupo
+    // Efecto para verificar dispenser (solo en cambios manuales de cliente)
     useEffect(() => {
-        const fetchAlquiler = async () => {
-            if (!formData.cliente) {
-                setAlquilerInfo(null);
-                return;
-            }
+        const fetchAlquilerManual = async () => {
+            if (!formData.cliente || pedidoAEditar) return; // Si es edición, ya se hizo en inicializar()
+            
             try {
-                // Verificar si tiene dispenser instalado
                 const { data: dispenser } = await supabase
                     .from('dispensers')
                     .select('id')
@@ -182,7 +206,6 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                     .maybeSingle();
 
                 if (dispenser) {
-                    // Contar bidones entregados este mes
                     const mesActual = new Date().toISOString().substring(0, 7) + '-01';
                     const { data: pedidosEsteMes } = await supabase
                         .from('pedidos')
@@ -192,31 +215,24 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
                     let entregados = 0;
                     pedidosEsteMes?.forEach(p => {
-                        // Excluir el pedido actual si estamos editando para no doble-contar
-                        if (pedidoAEditar && p.id === pedidoAEditar.id) return;
-                        
                         (p.detalles_pedido || []).forEach(d => {
                             const esBidon = d.producto?.toLowerCase().includes('bidon') || 
                                            d.producto?.toLowerCase().includes('bidón') ||
                                            d.producto?.toLowerCase().includes('20l');
-                            if (esBidon) {
-                                entregados += (Number(d.cantidad) || 0);
-                            }
+                            if (esBidon) entregados += (Number(d.cantidad) || 0);
                         });
                     });
-
                     setAlquilerInfo({ tieneDispenser: true, bidonesEntregadosEsteMes: entregados });
                 } else {
                     setAlquilerInfo(null);
                 }
             } catch (err) {
-                console.error("Error al buscar dispenser:", err);
+                console.error("Error al buscar dispenser manual:", err);
             }
         };
-        if (isOpen) {
-            fetchAlquiler();
-        }
-    }, [formData.cliente, isOpen, pedidoAEditar]);
+        
+        fetchAlquilerManual();
+    }, [formData.cliente]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -457,7 +473,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         <Modal 
             isOpen={isOpen} 
             onClose={onClose} 
-            title={pedidoAEditar ? "📝 Detalles del Registro (v2.4-definitive)" : "🛒 Nuevo Registro (v2.4-definitive)"}
+            title={pedidoAEditar ? "📝 Detalles del Registro (v2.5-final)" : "🛒 Nuevo Registro (v2.5-final)"}
         >
             {isLoadingData ? (
                 <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
