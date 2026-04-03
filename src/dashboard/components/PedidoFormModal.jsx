@@ -345,6 +345,17 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         })
                         .eq('id', detallesExistentes[0].id);
                     if (errorUpdateDetalle) throw errorUpdateDetalle;
+                } else {
+                    // Si NO hay detalles (migración/error previo), los creamos ahora
+                    const { error: errorInsertDetalle } = await supabase
+                        .from('detalles_pedido')
+                        .insert([{
+                            pedido_id: pedidoAEditar.id,
+                            producto: 'Bidón 20L',
+                            cantidad: formData.envasesEntregados,
+                            precio_unitario: formData.precioUnitario
+                        }]);
+                    if (errorInsertDetalle) throw errorInsertDetalle;
                 }
 
                 alert('¡Pedido actualizado con éxito!');
