@@ -8,6 +8,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingData, setIsLoadingData] = useState(false);
     const [alquilerInfo, setAlquilerInfo] = useState(null);
+    const [debugInfo, setDebugInfo] = useState({ pReal: 'null', detalles: 'null', pedidoOrig: 'null' });
 
     const [formData, setFormData] = useState({
         cliente: '',
@@ -60,49 +61,44 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         }
     };
 
-    // EFECTO ÚNICO DE MONTAJE (Gracias a la 'key' en Dashboard.jsx)
+    // EFECTO ÚNICO DE MONTAJE (v2.6-diagnostic)
     useEffect(() => {
         if (isOpen) {
             const inicializar = async () => {
                 setIsLoadingData(true);
                 try {
-                    // 1. Cargar lista de clientes PRIMERO para tener los precios especiales
+                    // 1. Cargar lista de clientes PRIMERO
                     const clientesActuales = await cargarClientes();
 
                     if (pedidoAEditar && pedidoAEditar.id) {
-                        // 2. RECUPERACION ATÓMICA: Pedimos el pedido con sus detalles
+                        // 2. RECUPERACION SECUENCIAL (EXTREMA): Sin joins automáticos
                         const { data: pReal, error: errP } = await supabase
                             .from('pedidos')
-                            .select('*, detalles_pedido(*)')
+                            .select('*')
                             .eq('id', pedidoAEditar.id)
                             .single();
-
                         if (errP) throw errP;
 
-                        // 3. Obtener detalles y precio sugerido por cliente
-                        let detalles = pReal.detalles_pedido || [];
+                        // Consulta explícita a detalles
+                        const { data: dReal, error: errD } = await supabase
+                            .from('detalles_pedido')
+                            .select('*')
+                            .eq('pedido_id', pReal.id);
                         
-                        // REFUERZO: Si el JOIN falló, buscamos directamente
-                        if (detalles.length === 0) {
-                            const { data: dExtra } = await supabase
-                                .from('detalles_pedido')
-                                .select('*')
-                                .eq('pedido_id', pReal.id);
-                            if (dExtra && dExtra.length > 0) detalles = dExtra;
-                        }
-                        
-                        // REFUERZO 2: Probar si el objeto original ya los traía (backup)
-                        if (detalles.length === 0 && pedidoAEditar.detalles_pedido) {
-                            detalles = pedidoAEditar.detalles_pedido;
-                        }
-
+                        const detalles = dReal || [];
                         const detalle = detalles.length > 0 ? detalles[0] : null;
-                        
-                        // Buscamos el precio especial del cliente e info de dispenser
+
+                        // Captura de diagnóstico
+                        setDebugInfo({
+                            pReal: JSON.stringify(pReal),
+                            detalles: JSON.stringify(detalles),
+                            pedidoOrig: JSON.stringify(pedidoAEditar)
+                        });
+
+                        // 3. Info de dispenser e info de cliente
                         const clienteData = clientesActuales.find(c => c.id === pReal.cliente_id);
                         const precioSugerido = clienteData?.precio_especial ? Number(clienteData.precio_especial) : 2500;
 
-                        // NUEVO: Buscamos info de dispenser AQUÍ MISMO para evitar race conditions
                         const { data: dispenser } = await supabase
                             .from('dispensers')
                             .select('id')
@@ -120,7 +116,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
 
                             let entregados = 0;
                             pedidosEsteMes?.forEach(p => {
-                                if (pedidoAEditar && p.id === pedidoAEditar.id) return;
+                                if (p.id === pedidoAEditar.id) return;
                                 (p.detalles_pedido || []).forEach(d => {
                                     const esBidon = d.producto?.toLowerCase().includes('bidon') || 
                                                    d.producto?.toLowerCase().includes('bidón') ||
@@ -133,7 +129,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                             setAlquilerInfo(null);
                         }
 
-                        // 4. Lógica de respaldo inteligente
+                        // 4. Lógica de recuperación
                         let cantEntregada = 0;
                         let preUnitario = precioSugerido;
 
@@ -145,6 +141,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                             cantEntregada = Math.round(Number(pReal.total) / Number(preUnitario)) || 0;
                         } else if (pReal.total === 0 && (pReal.estado === 'Entregado' || pReal.envases_recibidos > 0)) {
                             preUnitario = precioSugerido;
+                            // PRIORIDAD: Si no hay detalle en DB, usar lo que traía la lista original
                             const prevCant = pedidoAEditar.detalles_pedido?.[0]?.cantidad;
                             if (prevCant) cantEntregada = prevCant;
                         }
@@ -166,18 +163,12 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                             notas: pReal.notas || ''
                         });
                     } else {
-                        // MODO CREACIÓN
-                        const hoy = new Date().toLocaleDateString('en-CA');
                         setAlquilerInfo(null);
+                        const hoy = new Date().toLocaleDateString('en-CA');
                         setFormData({
-                            cliente: '',
-                            repartoId: '',
-                            fecha: hoy,
-                            envasesEntregados: 0,
-                            envasesRecibidos: 0,
-                            precioUnitario: 2500,
-                            medioPago: '',
-                            notas: ''
+                            cliente: '', repartoId: '', fecha: hoy,
+                            envasesEntregados: 0, envasesRecibidos: 0, 
+                            precioUnitario: 2500, medioPago: '', notas: ''
                         });
                         setRepartosDisponibles([]);
                         await cargarRepartos(hoy);
@@ -473,7 +464,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         <Modal 
             isOpen={isOpen} 
             onClose={onClose} 
-            title={pedidoAEditar ? "📝 Detalles del Registro (v2.5-final)" : "🛒 Nuevo Registro (v2.5-final)"}
+            title={pedidoAEditar ? "📝 Detalles del Registro (v2.6-diagnostic)" : "🛒 Nuevo Registro (v2.6-diagnostic)"}
         >
             {isLoadingData ? (
                 <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
@@ -582,6 +573,12 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         }}>
                             {isSubmitting ? 'Procesando...' : (pedidoAEditar ? 'Guardar Cambios' : 'Confirmar Registro')}
                         </button>
+                    </div>
+                    <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 'var(--border-radius-md)', fontSize: '0.65rem', overflow: 'auto', maxHeight: '100px' }}>
+                        <strong style={{ display: 'block', marginBottom: '0.25rem' }}>🔧 Diagnostic Data (v2.6):</strong>
+                        pReal: <span style={{ color: '#0369a1' }}>{debugInfo.pReal}</span><br/>
+                        detalles: <span style={{ color: '#059669' }}>{debugInfo.detalles}</span><br/>
+                        pedidoOriginal: <span style={{ color: '#7c3aed' }}>{debugInfo.pedidoOrig}</span>
                     </div>
                 </form>
             )}
