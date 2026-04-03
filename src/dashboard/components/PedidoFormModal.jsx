@@ -100,12 +100,12 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                             cantEntregada = Math.round(Number(pReal.total) / Number(preUnitario)) || 0;
                         } else if (pReal.total === 0 && (pReal.estado === 'Entregado' || pReal.envases_recibidos > 0)) {
                             // CASO CRÍTICO: Cliente con dispenser y pedido de cupo gratis ($0 total)
-                            // Si no hay detalle pero el pedido dice Entregado o se retiraron vacíos, 
-                            // es probable que se hayan entregado bidones bajo cupo. 
-                            // Intentamos ver si hay registros de movimientos previos o simplemente 
-                            // permitimos que el usuario asigne el número correcto sin que cargue "forzado" a 0.
-                            // Por ahora, si no hay detalle, dejamos que cargue el precio sugerido.
+                            // Si no hay detalle, no forzamos 0. Intentamos mantener el precio sugerido
+                            // y que el formulario permita la edición manual sin resetear.
                             preUnitario = precioSugerido;
+                            // Si se retiraron envases vacíos, es una señal fuerte de que se entregaron bidones.
+                            // Por ahora, lo dejamos en 0 para que el usuario complete, pero asegurando
+                            // que al GUARDAR se persista correctamente con el nuevo fix del handleSubmit.
                         }
 
                         const cleanFecha = pReal.fecha ? (pReal.fecha.includes('T') ? pReal.fecha.split('T')[0] : pReal.fecha) : '';
@@ -403,8 +403,8 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                     .insert([{
                         pedido_id: pedido.id,
                         producto: 'Bidón 20L',
-                        cantidad: formData.envasesEntregados,
-                        precio_unitario: formData.precioUnitario
+                        cantidad: Number(formData.envasesEntregados),
+                        precio_unitario: Number(formData.precioUnitario)
                     }]);
 
                 if (errorDetalle) throw errorDetalle;
@@ -443,7 +443,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         <Modal 
             isOpen={isOpen} 
             onClose={onClose} 
-            title={pedidoAEditar ? "📝 Detalles del Registro (v2.2-fix)" : "🛒 Nuevo Registro (v2.2-fix)"}
+            title={pedidoAEditar ? "📝 Detalles del Registro (v2.3-final)" : "🛒 Nuevo Registro (v2.3-final)"}
         >
             {isLoadingData ? (
                 <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
