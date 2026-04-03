@@ -80,14 +80,29 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         if (errP) throw errP;
 
                         // 3. Obtener detalles y precio sugerido por cliente
-                        const detalles = pReal.detalles_pedido || [];
+                        let detalles = pReal.detalles_pedido || [];
+                        
+                        // REFUERZO: Si el JOIN falló, buscamos directamente
+                        if (detalles.length === 0) {
+                            const { data: dExtra } = await supabase
+                                .from('detalles_pedido')
+                                .select('*')
+                                .eq('pedido_id', pReal.id);
+                            if (dExtra && dExtra.length > 0) detalles = dExtra;
+                        }
+                        
+                        // REFUERZO 2: Probar si el objeto original ya los traía (backup)
+                        if (detalles.length === 0 && pedidoAEditar.detalles_pedido) {
+                            detalles = pedidoAEditar.detalles_pedido;
+                        }
+
                         const detalle = detalles.length > 0 ? detalles[0] : null;
                         
                         // Buscamos el precio especial del cliente
                         const clienteData = clientesActuales.find(c => c.id === pReal.cliente_id);
                         const precioSugerido = clienteData?.precio_especial ? Number(clienteData.precio_especial) : 2500;
 
-                        // 4. Lógica de respaldo inteligente para evitar el "Error del 4"
+                        // 4. Lógica de respaldo inteligente
                         let cantEntregada = 0;
                         let preUnitario = precioSugerido;
 
@@ -99,13 +114,12 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                             preUnitario = precioSugerido;
                             cantEntregada = Math.round(Number(pReal.total) / Number(preUnitario)) || 0;
                         } else if (pReal.total === 0 && (pReal.estado === 'Entregado' || pReal.envases_recibidos > 0)) {
-                            // CASO CRÍTICO: Cliente con dispenser y pedido de cupo gratis ($0 total)
-                            // Si no hay detalle, no forzamos 0. Intentamos mantener el precio sugerido
-                            // y que el formulario permita la edición manual sin resetear.
+                            // CASO DISPENSER: Si no hay detalle pero hay señal de visita, 
+                            // no forzamos 0. Mantenemos el precio sugerido y permitimos edición manual.
+                            // Si antes había un valor en la lista, lo recuperamos
                             preUnitario = precioSugerido;
-                            // Si se retiraron envases vacíos, es una señal fuerte de que se entregaron bidones.
-                            // Por ahora, lo dejamos en 0 para que el usuario complete, pero asegurando
-                            // que al GUARDAR se persista correctamente con el nuevo fix del handleSubmit.
+                            const prevCant = pedidoAEditar.detalles_pedido?.[0]?.cantidad;
+                            if (prevCant) cantEntregada = prevCant;
                         }
 
                         const cleanFecha = pReal.fecha ? (pReal.fecha.includes('T') ? pReal.fecha.split('T')[0] : pReal.fecha) : '';
@@ -443,7 +457,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         <Modal 
             isOpen={isOpen} 
             onClose={onClose} 
-            title={pedidoAEditar ? "📝 Detalles del Registro (v2.3-final)" : "🛒 Nuevo Registro (v2.3-final)"}
+            title={pedidoAEditar ? "📝 Detalles del Registro (v2.4-definitive)" : "🛒 Nuevo Registro (v2.4-definitive)"}
         >
             {isLoadingData ? (
                 <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
