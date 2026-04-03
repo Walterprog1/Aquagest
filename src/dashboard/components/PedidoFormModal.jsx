@@ -87,19 +87,25 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         const clienteData = clientesActuales.find(c => c.id === pReal.cliente_id);
                         const precioSugerido = clienteData?.precio_especial ? Number(clienteData.precio_especial) : 2500;
 
-                        // 4. Lógica de respaldo inteligente para evitar el "Error del 4" (9000/2500 = 3.6 -> 4)
+                        // 4. Lógica de respaldo inteligente para evitar el "Error del 4"
                         let cantEntregada = 0;
                         let preUnitario = precioSugerido;
 
                         if (detalle) {
                             cantEntregada = detalle.cantidad;
                             preUnitario = detalle.precio_unitario;
-                        } else if (pReal.total > 0 || pReal.envases_recibidos > 0) {
-                            // Si el detalle falló (migración antigua o error), deducimos usando el precio sugerido
+                        } else if (pReal.total > 0) {
+                            // Deducir del total si hay detalles faltantes (migración antigua)
                             preUnitario = precioSugerido;
-                            if (pReal.total > 0) {
-                                cantEntregada = Math.round(pReal.total / preUnitario) || 0;
-                            }
+                            cantEntregada = Math.round(Number(pReal.total) / Number(preUnitario)) || 0;
+                        } else if (pReal.total === 0 && (pReal.estado === 'Entregado' || pReal.envases_recibidos > 0)) {
+                            // CASO CRÍTICO: Cliente con dispenser y pedido de cupo gratis ($0 total)
+                            // Si no hay detalle pero el pedido dice Entregado o se retiraron vacíos, 
+                            // es probable que se hayan entregado bidones bajo cupo. 
+                            // Intentamos ver si hay registros de movimientos previos o simplemente 
+                            // permitimos que el usuario asigne el número correcto sin que cargue "forzado" a 0.
+                            // Por ahora, si no hay detalle, dejamos que cargue el precio sugerido.
+                            preUnitario = precioSugerido;
                         }
 
                         const cleanFecha = pReal.fecha ? (pReal.fecha.includes('T') ? pReal.fecha.split('T')[0] : pReal.fecha) : '';
@@ -340,20 +346,21 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                     const { error: errorUpdateDetalle } = await supabase
                         .from('detalles_pedido')
                         .update({
-                            cantidad: formData.envasesEntregados,
-                            precio_unitario: formData.precioUnitario
+                            cantidad: Number(formData.envasesEntregados),
+                            precio_unitario: Number(formData.precioUnitario)
                         })
                         .eq('id', detallesExistentes[0].id);
                     if (errorUpdateDetalle) throw errorUpdateDetalle;
                 } else {
                     // Si NO hay detalles (migración/error previo), los creamos ahora
+                    // ESTO ES VITAL PARA PEDIDOS DE DISPENSER ($0 total)
                     const { error: errorInsertDetalle } = await supabase
                         .from('detalles_pedido')
                         .insert([{
                             pedido_id: pedidoAEditar.id,
                             producto: 'Bidón 20L',
-                            cantidad: formData.envasesEntregados,
-                            precio_unitario: formData.precioUnitario
+                            cantidad: Number(formData.envasesEntregados),
+                            precio_unitario: Number(formData.precioUnitario)
                         }]);
                     if (errorInsertDetalle) throw errorInsertDetalle;
                 }
