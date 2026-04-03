@@ -8,7 +8,6 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingData, setIsLoadingData] = useState(false);
     const [alquilerInfo, setAlquilerInfo] = useState(null);
-    const [debugInfo, setDebugInfo] = useState({ pReal: 'null', detalles: 'null', pedidoOrig: 'null' });
 
     const [formData, setFormData] = useState({
         cliente: '',
@@ -61,17 +60,16 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         }
     };
 
-    // EFECTO ÚNICO DE MONTAJE (v2.6-diagnostic)
+    // EFECTO ÚNICO DE MONTAJE (v2.7-final definitiva)
     useEffect(() => {
         if (isOpen) {
             const inicializar = async () => {
                 setIsLoadingData(true);
                 try {
-                    // 1. Cargar lista de clientes PRIMERO
                     const clientesActuales = await cargarClientes();
 
                     if (pedidoAEditar && pedidoAEditar.id) {
-                        // 2. RECUPERACION SECUENCIAL (EXTREMA): Sin joins automáticos
+                        // 1. Carga de pedido directa para máxima fiabilidad
                         const { data: pReal, error: errP } = await supabase
                             .from('pedidos')
                             .select('*')
@@ -79,21 +77,20 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                             .single();
                         if (errP) throw errP;
 
-                        // Consulta explícita a detalles
-                        const { data: dReal, error: errD } = await supabase
+                        // 2. Consulta explícita a detalles
+                        const { data: dReal } = await supabase
                             .from('detalles_pedido')
                             .select('*')
                             .eq('pedido_id', pReal.id);
                         
-                        const detalles = dReal || [];
-                        const detalle = detalles.length > 0 ? detalles[0] : null;
+                        let detalles = dReal || [];
+                        
+                        // Respaldo de seguridad desde la lista principal - SOLO SI DB ESTA VACIA
+                        if (detalles.length === 0 && pedidoAEditar.detalles_pedido) {
+                            detalles = pedidoAEditar.detalles_pedido;
+                        }
 
-                        // Captura de diagnóstico
-                        setDebugInfo({
-                            pReal: JSON.stringify(pReal),
-                            detalles: JSON.stringify(detalles),
-                            pedidoOrig: JSON.stringify(pedidoAEditar)
-                        });
+                        const detalle = detalles.length > 0 ? detalles[0] : null;
 
                         // 3. Info de dispenser e info de cliente
                         const clienteData = clientesActuales.find(c => c.id === pReal.cliente_id);
@@ -129,7 +126,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                             setAlquilerInfo(null);
                         }
 
-                        // 4. Lógica de recuperación
+                        // 4. Lógica de recuperación de cantidad
                         let cantEntregada = 0;
                         let preUnitario = precioSugerido;
 
@@ -139,18 +136,15 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         } else if (pReal.total > 0) {
                             preUnitario = precioSugerido;
                             cantEntregada = Math.round(Number(pReal.total) / Number(preUnitario)) || 0;
-                        } else if (pReal.total === 0 && (pReal.estado === 'Entregado' || pReal.envases_recibidos > 0)) {
+                        } else if (pReal.total === 0 && Number(pReal.envases_recibidos) > 0) {
+                            // SI ES DISPENSER Y NO HAY DETALLE: Sugerimos al menos 1 o intentamos deducir
+                            // pero permitimos que el usuario edite sin resetear a 0.
                             preUnitario = precioSugerido;
-                            // PRIORIDAD: Si no hay detalle en DB, usar lo que traía la lista original
-                            const prevCant = pedidoAEditar.detalles_pedido?.[0]?.cantidad;
-                            if (prevCant) cantEntregada = prevCant;
+                            cantEntregada = Number(pReal.envases_recibidos); // Sugerencia técnica
                         }
 
                         const cleanFecha = pReal.fecha ? (pReal.fecha.includes('T') ? pReal.fecha.split('T')[0] : pReal.fecha) : '';
-                        
-                        if (cleanFecha) {
-                            await cargarRepartos(cleanFecha);
-                        }
+                        if (cleanFecha) await cargarRepartos(cleanFecha);
 
                         setFormData({
                             cliente: pReal.cliente_id || '',
@@ -174,7 +168,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         await cargarRepartos(hoy);
                     }
                 } catch (err) {
-                    console.error("[PedidoFormModal] Error fatal en inicialización:", err);
+                    console.error("[PedidoFormModal] Error inicializar:", err);
                 } finally {
                     setIsLoadingData(false);
                 }
@@ -358,33 +352,24 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                     if (errDelOp) console.error("[Caja] Error al revertir ingreso automático (Edit):", errDelOp);
                 }
 
-                const { data: detallesExistentes } = await supabase
+                // 4. PERSISTENCIA CRÍTICA DE DETALLES (v2.7-final)
+                // Usamos una estrategia de BORRAR e INSERTAR para garantizar consistencia absoluta
+                // Esto soluciona los problemas de registros faltantes en pedidos de dispenser ($0)
+                await supabase
                     .from('detalles_pedido')
-                    .select('id')
+                    .delete()
                     .eq('pedido_id', pedidoAEditar.id);
 
-                if (detallesExistentes && detallesExistentes.length > 0) {
-                    const { error: errorUpdateDetalle } = await supabase
-                        .from('detalles_pedido')
-                        .update({
-                            cantidad: Number(formData.envasesEntregados),
-                            precio_unitario: Number(formData.precioUnitario)
-                        })
-                        .eq('id', detallesExistentes[0].id);
-                    if (errorUpdateDetalle) throw errorUpdateDetalle;
-                } else {
-                    // Si NO hay detalles (migración/error previo), los creamos ahora
-                    // ESTO ES VITAL PARA PEDIDOS DE DISPENSER ($0 total)
-                    const { error: errorInsertDetalle } = await supabase
-                        .from('detalles_pedido')
-                        .insert([{
-                            pedido_id: pedidoAEditar.id,
-                            producto: 'Bidón 20L',
-                            cantidad: Number(formData.envasesEntregados),
-                            precio_unitario: Number(formData.precioUnitario)
-                        }]);
-                    if (errorInsertDetalle) throw errorInsertDetalle;
-                }
+                const { error: errorInsertDetalle } = await supabase
+                    .from('detalles_pedido')
+                    .insert([{
+                        pedido_id: pedidoAEditar.id,
+                        producto: 'Bidón 20L',
+                        cantidad: Number(formData.envasesEntregados),
+                        precio_unitario: Number(formData.precioUnitario)
+                    }]);
+
+                if (errorInsertDetalle) throw errorInsertDetalle;
 
                 alert('¡Pedido actualizado con éxito!');
             } else {
@@ -464,7 +449,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         <Modal 
             isOpen={isOpen} 
             onClose={onClose} 
-            title={pedidoAEditar ? "📝 Detalles del Registro (v2.6-diagnostic)" : "🛒 Nuevo Registro (v2.6-diagnostic)"}
+            title={pedidoAEditar ? "📝 Detalles del Registro (v2.7-final)" : "🛒 Nuevo Registro (v2.7-final)"}
         >
             {isLoadingData ? (
                 <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
@@ -573,12 +558,6 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         }}>
                             {isSubmitting ? 'Procesando...' : (pedidoAEditar ? 'Guardar Cambios' : 'Confirmar Registro')}
                         </button>
-                    </div>
-                    <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 'var(--border-radius-md)', fontSize: '0.65rem', overflow: 'auto', maxHeight: '100px' }}>
-                        <strong style={{ display: 'block', marginBottom: '0.25rem' }}>🔧 Diagnostic Data (v2.6):</strong>
-                        pReal: <span style={{ color: '#0369a1' }}>{debugInfo.pReal}</span><br/>
-                        detalles: <span style={{ color: '#059669' }}>{debugInfo.detalles}</span><br/>
-                        pedidoOriginal: <span style={{ color: '#7c3aed' }}>{debugInfo.pedidoOrig}</span>
                     </div>
                 </form>
             )}
