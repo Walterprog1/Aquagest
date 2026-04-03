@@ -443,7 +443,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         <Modal 
             isOpen={isOpen} 
             onClose={onClose} 
-            title={pedidoAEditar ? "📝 Detalles del Registro" : "🛒 Nuevo Registro"}
+            title={pedidoAEditar ? "📝 Detalles del Registro (v2.2-fix)" : "🛒 Nuevo Registro (v2.2-fix)"}
         >
             {isLoadingData ? (
                 <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
