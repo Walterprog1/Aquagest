@@ -94,10 +94,12 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         if (detalle) {
                             cantEntregada = detalle.cantidad;
                             preUnitario = detalle.precio_unitario;
-                        } else if (pReal.total > 0) {
-                            // Si el detalle falló pero el total existe, deducimos usando el precio sugerido del cliente
+                        } else if (pReal.total > 0 || pReal.envases_recibidos > 0) {
+                            // Si el detalle falló (migración antigua o error), deducimos usando el precio sugerido
                             preUnitario = precioSugerido;
-                            cantEntregada = Math.round(pReal.total / preUnitario) || 0;
+                            if (pReal.total > 0) {
+                                cantEntregada = Math.round(pReal.total / preUnitario) || 0;
+                            }
                         }
 
                         const cleanFecha = pReal.fecha ? (pReal.fecha.includes('T') ? pReal.fecha.split('T')[0] : pReal.fecha) : '';
@@ -164,7 +166,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                     const mesActual = new Date().toISOString().substring(0, 7) + '-01';
                     const { data: pedidosEsteMes } = await supabase
                         .from('pedidos')
-                        .select('id, cantidad, detalles_pedido(producto)')
+                        .select('id, detalles_pedido(cantidad, producto)')
                         .eq('cliente_id', formData.cliente)
                         .gte('fecha', mesActual);
 
@@ -172,9 +174,15 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                     pedidosEsteMes?.forEach(p => {
                         // Excluir el pedido actual si estamos editando para no doble-contar
                         if (pedidoAEditar && p.id === pedidoAEditar.id) return;
-                        // En la BD actual, los detalles están en detalles_pedido, pero para simplificar
-                        // sumamos 'cantidad' asumiendo bidones, ya que es el principal.
-                        entregados += (Number(p.cantidad) || 0);
+                        
+                        (p.detalles_pedido || []).forEach(d => {
+                            const esBidon = d.producto?.toLowerCase().includes('bidon') || 
+                                           d.producto?.toLowerCase().includes('bidón') ||
+                                           d.producto?.toLowerCase().includes('20l');
+                            if (esBidon) {
+                                entregados += (Number(d.cantidad) || 0);
+                            }
+                        });
                     });
 
                     setAlquilerInfo({ tieneDispenser: true, bidonesEntregadosEsteMes: entregados });
@@ -236,10 +244,15 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("No autenticado");
 
+            const totalCalculado = calcularTotal();
             let derivedEstado = 'Entregado';
             let derivedPagoEstado = 'pendiente';
 
-            if (!formData.medioPago) {
+            // Si el total es 0 (bidones gratuitos por dispenser), marcar como pagado automáticamente
+            if (totalCalculado === 0 && alquilerInfo?.tieneDispenser) {
+                derivedEstado = 'Entregado';
+                derivedPagoEstado = 'pagado';
+            } else if (!formData.medioPago) {
                 derivedEstado = 'Pendiente';
                 derivedPagoEstado = 'pendiente';
             } else if (formData.medioPago === 'efectivo' || formData.medioPago === 'transferencia') {
@@ -250,12 +263,17 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                 derivedPagoEstado = 'pendiente';
             }
 
+            // Para pedidos gratuitos (bidones sin cargo por dispenser), usar "sin_cargo" como medio de pago
+            const medioPagoFinal = (totalCalculado === 0 && alquilerInfo?.tieneDispenser && !formData.medioPago)
+                ? 'sin_cargo'
+                : (formData.medioPago || null);
+
             const pedidoData = {
                 cliente_id: formData.cliente || null,
                 reparto_id: formData.repartoId || null,
                 fecha: formData.fecha,
-                total: calcularTotal(),
-                medio_pago: formData.medioPago || null,
+                total: totalCalculado,
+                medio_pago: medioPagoFinal,
                 estado: derivedEstado,
                 pago_estado: derivedPagoEstado,
                 notas: formData.notas,
