@@ -269,13 +269,14 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
             let derivedEstado = 'Entregado';
             let derivedPagoEstado = 'pendiente';
 
-            // Si el total es 0 (bidones gratuitos por dispenser), marcar como pagado automáticamente
-            if (totalCalculado === 0 && alquilerInfo?.tieneDispenser) {
-                derivedEstado = 'Entregado';
-                derivedPagoEstado = 'pagado';
-            } else if (!formData.medioPago) {
+            if (!formData.medioPago) {
+                // Si el usuario no seleccionó medio de pago, el registro es un "Pedido Pendiente"
                 derivedEstado = 'Pendiente';
                 derivedPagoEstado = 'pendiente';
+            } else if (totalCalculado === 0 && alquilerInfo?.tieneDispenser) {
+                // Si eligió registrar (no pendiente) y es dispenser con total 0, autocompletamos como pagado
+                derivedEstado = 'Entregado';
+                derivedPagoEstado = 'pagado';
             } else if (formData.medioPago === 'efectivo' || formData.medioPago === 'transferencia') {
                 derivedEstado = 'Entregado';
                 derivedPagoEstado = 'pagado';
@@ -284,8 +285,9 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                 derivedPagoEstado = 'pendiente';
             }
 
-            // Para pedidos gratuitos (bidones sin cargo por dispenser), usar "sin_cargo" como medio de pago
-            const medioPagoFinal = (totalCalculado === 0 && alquilerInfo?.tieneDispenser && !formData.medioPago)
+            // Para pedidos gratuitos (beneficio de dispenser), solo marcar "sin_cargo" si el estado es Entregado.
+            // Si es Pendiente, el medio_pago debe quedar null para que el sistema sepa que falta completar.
+            const medioPagoFinal = (derivedEstado !== 'Pendiente' && totalCalculado === 0 && alquilerInfo?.tieneDispenser)
                 ? 'sin_cargo'
                 : (formData.medioPago || null);
 
