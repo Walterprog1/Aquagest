@@ -47,21 +47,6 @@ function App() {
       ) : (
         <Login />
       )}
-      {/* Indicador de Despliegue Crítico (v2.9+) */}
-      <div style={{
-          position: 'fixed',
-          bottom: '10px',
-          right: '10px',
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          color: 'white',
-          padding: '4px 8px',
-          borderRadius: '4px',
-          fontSize: '10px',
-          zIndex: 9999,
-          pointerEvents: 'none'
-      }}>
-          BUILD_SAFE_V2.9
-      </div>
     </>
   )
 }
