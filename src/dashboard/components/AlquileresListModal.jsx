@@ -79,10 +79,16 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                 
                 let totalBidones = 0;
                 const pedidosCliente = pedidos.filter(p => p.cliente_id == clienteId && clienteId != null);
+                
+                let debugInfo = `PedsFound: ${pedidosCliente.length} `;
                 pedidosCliente.forEach(p => {
-                    (p.detalles_pedido || []).forEach(d => {
+                    const det = p.detalles_pedido;
+                    debugInfo += `[Est:${p.estado} DetLen:${det ? det.length : 'NULL'}] `;
+                    
+                    (det || []).forEach(d => {
                         // SAFE CHECK: Detección mega-amplia de bidones (incluye cualquier variante de Bidon/Bidón/20L/12L)
                         const prod = (d.producto || '').toLowerCase();
+                        debugInfo += `(${prod}=${d.cantidad}) `;
                         const esBidon = prod.includes('bid') || prod.includes('20') || prod.includes('12');
                         if (esBidon) {
                             totalBidones += (Number(d.cantidad) || 0);
@@ -97,7 +103,8 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                     modelo: disp.modelo,
                     bidones_entregados: totalBidones,
                     pagado: !!pagoRealizado,
-                    monto_pagado: pagoRealizado ? pagoRealizado.monto : 0
+                    monto_pagado: pagoRealizado ? pagoRealizado.monto : 0,
+                    debug: debugInfo
                 };
             });
 
@@ -247,6 +254,7 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                                         }}>
                                             {a.bidones_entregados} / 3
                                         </div>
+                                        <div style={{fontSize: '9px', color: '#666', marginTop: '4px', wordBreak: 'break-all'}}>{a.debug}</div>
                                     </td>
                                     <td style={{ padding: '0.75rem' }}>
                                         {a.pagado ? (
