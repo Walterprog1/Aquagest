@@ -194,7 +194,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                     const mesActual = new Date().toISOString().substring(0, 7) + '-01';
                     const { data: pedidosEsteMes } = await supabase
                         .from('pedidos')
-                        .select('id, detalles_pedido')
+                        .select('id, detalles_pedido(cantidad, producto)')
                         .eq('cliente_id', formData.cliente)
                         .eq('estado', 'Entregado')
                         .gte('fecha', mesActual);

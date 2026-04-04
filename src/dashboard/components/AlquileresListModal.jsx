@@ -5,18 +5,20 @@ import { supabase } from '../../lib/supabase';
 const AlquileresListModal = ({ isOpen, onClose }) => {
     const [alquileres, setAlquileres] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1); // 1-12
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
     const fetchAlquileres = async () => {
         setIsLoading(true);
+        setError(null);
         try {
-            // 1. Obtener dispensers instalados - Usamos ilike para evitar problemas de capitalización
+            // 1. Obtener dispensers instalados
             const { data: dbDispensers, error: dispError } = await supabase
                 .from('dispensers')
                 .select(`*, clientes (id, nombre)`)
-                .ilike('estado', 'instalado');
+                .eq('estado', 'Instalado');
             
             if (dispError) {
                 console.error("Error al buscar dispensers:", dispError);
@@ -42,9 +44,10 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
             }
 
             // 4. Obtener pedidos del periodo para cuota (bidones)
+            // IMPORTANTE: detalles_pedido es una TABLA relacionada, no una columna JSONB
             const { data: pedidos, error: pedError } = await supabase
                 .from('pedidos')
-                .select('cliente_id, detalles_pedido')
+                .select('cliente_id, detalles_pedido(cantidad, producto)')
                 .eq('estado', 'Entregado')
                 .gte('fecha', inicioMes)
                 .lte('fecha', finMes);
@@ -91,6 +94,7 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
             setAlquileres(listaProcesada);
         } catch (error) {
             console.error("Error al cargar alquileres:", error);
+            setError(error.message || "Error desconocido al conectar con la base de datos");
         } finally {
             setIsLoading(false);
         }
@@ -143,6 +147,21 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="🏢 Control Mensual de Alquileres">
+            {error && (
+                <div style={{ 
+                    backgroundColor: '#fee2e2', 
+                    color: '#991b1b', 
+                    padding: '1rem', 
+                    borderRadius: 'var(--border-radius-md)', 
+                    marginBottom: '1rem',
+                    border: '1px solid #f87171',
+                    fontSize: '0.875rem'
+                }}>
+                    <strong>⚠️ Error de Base de Datos:</strong> {error}
+                    <br />
+                    <small>Intenta recargar la página o contacta a soporte.</small>
+                </div>
+            )}
             <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <input
                     type="text"

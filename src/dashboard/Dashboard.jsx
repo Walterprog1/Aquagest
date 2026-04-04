@@ -168,7 +168,7 @@ const Dashboard = ({ user, onLogout }) => {
             pointerEvents: 'none',
             zIndex: 9999
         }}>
-            v3.1
+            v3.2
         </div>
     </>);
 };
