@@ -53,19 +53,37 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
             }
 
             // 4. Obtener pedidos del periodo para cuota (bidones)
-            // Traemos todos los campos para evitar bugs de PostgREST y filtramos En Memoria
             let pedidos = [];
+            
+            // Paso A: Obtener pedidos del periodo
             const { data: pedData, error: pedError } = await supabase
                 .from('pedidos')
-                .select('*, detalles_pedido(*)');
-                // IMPORTANTE: Quitamos filtros de fecha TEMPORALMENTE para validar de por vida
+                .select('*') // Sin JOIN para evitar bugs de PostgREST
+                .gte('fecha', inicioMes)
+                .lte('fecha', finMes);
             
             if (pedError) {
                 console.error("Error al buscar pedidos (Opcional):", pedError);
-                setError(prev => prev ? prev + " | Error Pedidos rel" : "Error Pedidos rel");
+                setError(prev => prev ? prev + " | Error Pedidos" : "Error Pedidos");
             } else {
-                // Filtramos por entregado EN MEMORIA para asegurar compatibilidad de casos/espacios
-                pedidos = (pedData || []).filter(p => p.estado && p.estado.toLowerCase().includes('entregado'));
+                let peds = pedData || [];
+                
+                // Paso B: Obtener detalles manualmente por in()
+                const pedIds = peds.map(p => p.id);
+                let detalles = [];
+                if (pedIds.length > 0) {
+                    const { data: detData } = await supabase
+                        .from('detalles_pedido')
+                        .select('*')
+                        .in('pedido_id', pedIds);
+                    detalles = detData || [];
+                }
+                
+                // Paso C: Ensamblar En Memoria y filtrar
+                pedidos = peds.map(p => ({
+                    ...p,
+                    detalles_pedido: detalles.filter(d => d.pedido_id === p.id)
+                })).filter(p => p.estado && p.estado.toLowerCase().includes('entregado'));
             }
 
             // 5. Procesar datos
