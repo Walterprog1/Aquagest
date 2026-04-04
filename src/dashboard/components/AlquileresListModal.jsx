@@ -16,7 +16,7 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
             const { data: dbDispensers, error: dispError } = await supabase
                 .from('dispensers')
                 .select(`*, clientes (id, nombre)`)
-                .eq('estado', 'instalado');
+                .eq('estado', 'Instalado');
             
             if (dispError) throw dispError;
 
@@ -39,6 +39,7 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
             const { data: pedidos, error: pedError } = await supabase
                 .from('pedidos')
                 .select('cliente_id, detalles_pedido(cantidad, producto)')
+                .eq('estado', 'Entregado')
                 .gte('fecha', inicioMes)
                 .lte('fecha', finMes);
             
