@@ -44,7 +44,7 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
             // 4. Obtener pedidos del periodo para cuota (bidones)
             const { data: pedidos, error: pedError } = await supabase
                 .from('pedidos')
-                .select('cliente_id, detalles_pedido(cantidad, producto)')
+                .select('cliente_id, detalles_pedido')
                 .eq('estado', 'Entregado')
                 .gte('fecha', inicioMes)
                 .lte('fecha', finMes);
