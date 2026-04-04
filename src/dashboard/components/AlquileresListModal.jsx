@@ -42,9 +42,8 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
             const { data: opsData, error: opError } = await supabase
                 .from('operaciones')
                 .select('entidad_referencia, monto, fecha')
-                .ilike('categoria', '%Alquiler Dispenser%')
-                .gte('fecha', inicioMes)
-                .lte('fecha', finMes);
+                .ilike('categoria', '%Alquiler Dispenser%');
+                // IMPORTANTE: Quitamos filtros de fecha TEMPORALMENTE para validar de por vida
             
             if (opError) {
                 console.error("Error al buscar operaciones (Opcional):", opError);
@@ -58,9 +57,8 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
             let pedidos = [];
             const { data: pedData, error: pedError } = await supabase
                 .from('pedidos')
-                .select('*, detalles_pedido(*)')
-                .gte('fecha', inicioMes)
-                .lte('fecha', finMes);
+                .select('*, detalles_pedido(*)');
+                // IMPORTANTE: Quitamos filtros de fecha TEMPORALMENTE para validar de por vida
             
             if (pedError) {
                 console.error("Error al buscar pedidos (Opcional):", pedError);
