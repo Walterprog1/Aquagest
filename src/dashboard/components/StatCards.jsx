@@ -31,7 +31,7 @@ const StatCard = ({ title, value, colorClass, linkLabel, onClick, onSecondaryCli
     </div>
 );
 
-const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuarios, onOpenPendientes, onOpenDispensers, onOpenOperaciones }) => {
+const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuarios, onOpenPendientes, onOpenDispensers, onOpenOperaciones, onOpenAlquileres }) => {
     const [filtroPeriodo, setFiltroPeriodo] = useState('total');
     const [stats, setStats] = useState({
         pedidosPendientes: 0,
@@ -229,11 +229,7 @@ const StatCards = ({ onOpenClientes, onOpenVehiculos, onOpenZonas, onOpenUsuario
                     value={stats.alquileresPendientes || 0}
                     colorClass={(stats.alquileresPendientes || 0) > 0 ? "red" : "green"}
                     linkLabel="Controlar"
-                    onClick={() => {
-                        // El modal se abre desde QuickActions, pero para simplificar, dispararemos una alerta o emitiremos evento.
-                        // Como no tenemos proxy directo acá, simplemente instruiremos al usuario ir a Acciones > Alquileres.
-                        alert("Podés controlar los alquileres desde Acciones Rápidas > Controlar Alquileres 📆");
-                    }}
+                    onClick={onOpenAlquileres}
                 />
             </div>
         </div>

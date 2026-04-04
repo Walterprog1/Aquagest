@@ -8,7 +8,7 @@ import OperacionFormModal from './OperacionFormModal';
 import UsuarioFormModal from './UsuarioFormModal';
 import ResumenFormModal from './ResumenFormModal';
 import DispenserFormModal from './DispenserFormModal';
-import AlquileresListModal from './AlquileresListModal';
+import DispenserFormModal from './DispenserFormModal';
 
 const ActionButton = ({ icon, label, onClick }) => (
     <button className="action-btn" onClick={onClick}>
@@ -17,7 +17,7 @@ const ActionButton = ({ icon, label, onClick }) => (
     </button>
 );
 
-const QuickActions = ({ onOpenMassiveWA, onOpenAddPedido }) => {
+const QuickActions = ({ onOpenMassiveWA, onOpenAddPedido, onOpenAlquileres }) => {
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [isRepartoModalOpen, setIsRepartoModalOpen] = useState(false);
     const [isStockModalOpen, setIsStockModalOpen] = useState(false);
@@ -27,7 +27,6 @@ const QuickActions = ({ onOpenMassiveWA, onOpenAddPedido }) => {
     const [isUsuarioModalOpen, setIsUsuarioModalOpen] = useState(false);
     const [isResumenModalOpen, setIsResumenModalOpen] = useState(false);
     const [isDispenserModalOpen, setIsDispenserModalOpen] = useState(false);
-    const [isAlquileresModalOpen, setIsAlquileresModalOpen] = useState(false);
 
     const actions = [
         { icon: '👥', label: 'Agregar Cliente' },
@@ -60,7 +59,7 @@ const QuickActions = ({ onOpenMassiveWA, onOpenAddPedido }) => {
                     if (action.label === 'Agregar Usuario') clickHandler = () => setIsUsuarioModalOpen(true);
                     if (action.label === 'Agregar Resumen') clickHandler = () => setIsResumenModalOpen(true);
                     if (action.label === 'Agregar Dispenser') clickHandler = () => setIsDispenserModalOpen(true);
-                    if (action.label === 'Controlar Alquileres') clickHandler = () => setIsAlquileresModalOpen(true);
+                    if (action.label === 'Controlar Alquileres') clickHandler = onOpenAlquileres;
                     if (action.label === 'Mensaje Masivo') clickHandler = onOpenMassiveWA;
 
                     return (
@@ -117,11 +116,6 @@ const QuickActions = ({ onOpenMassiveWA, onOpenAddPedido }) => {
             <DispenserFormModal
                 isOpen={isDispenserModalOpen}
                 onClose={() => setIsDispenserModalOpen(false)}
-            />
-
-            <AlquileresListModal
-                isOpen={isAlquileresModalOpen}
-                onClose={() => setIsAlquileresModalOpen(false)}
             />
         </div>
     );

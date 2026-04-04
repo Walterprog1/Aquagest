@@ -28,6 +28,7 @@ const Dashboard = ({ user, onLogout }) => {
     const [showMassiveWA, setShowMassiveWA] = React.useState(false);
     const [showPedidos, setShowPedidos] = React.useState(false);
     const [showRepartos, setShowRepartos] = React.useState(false);
+    const [showAlquileres, setShowAlquileres] = React.useState(false);
     
     // Modal de Resumen Detallado de un Reparto
     const [repartoEnDetalle, setRepartoEnDetalle] = React.useState(null);
@@ -65,6 +66,7 @@ const Dashboard = ({ user, onLogout }) => {
                     onOpenPendientes={() => setShowPedidos(true)}
                     onOpenDispensers={() => setShowDispensers(true)}
                     onOpenOperaciones={() => setShowOperaciones(true)}
+                    onOpenAlquileres={() => setShowAlquileres(true)}
                 />
 
                 <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
@@ -84,6 +86,7 @@ const Dashboard = ({ user, onLogout }) => {
                 <QuickActions 
                     onOpenMassiveWA={() => setShowMassiveWA(true)} 
                     onOpenAddPedido={openAddPedido}
+                    onOpenAlquileres={() => setShowAlquileres(true)}
                 />
 
                 <div className="dashboard-grid">
@@ -147,6 +150,10 @@ const Dashboard = ({ user, onLogout }) => {
                     setPedidoAEditar(null);
                 }}
                 pedidoAEditar={pedidoAEditar}
+            />
+            <AlquileresListModal
+                isOpen={showAlquileres}
+                onClose={() => setShowAlquileres(false)}
             />
         </div>
     );
