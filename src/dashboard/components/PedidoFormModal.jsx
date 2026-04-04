@@ -187,7 +187,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                     .from('dispensers')
                     .select('id')
                     .eq('cliente_id', formData.cliente)
-                    .eq('estado', 'instalado')
+                    .eq('estado', 'Instalado')
                     .maybeSingle();
 
                 if (dispenser) {
@@ -196,6 +196,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         .from('pedidos')
                         .select('id, detalles_pedido(cantidad, producto)')
                         .eq('cliente_id', formData.cliente)
+                        .eq('estado', 'Entregado')
                         .gte('fecha', mesActual);
 
                     let entregados = 0;
