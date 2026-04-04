@@ -160,15 +160,18 @@ const Dashboard = ({ user, onLogout }) => {
         </div>
         <div style={{
             position: 'fixed',
-            bottom: '10px',
+            top: '10px',
             right: '10px',
-            fontSize: '10px',
-            color: 'var(--text-gray)',
-            opacity: 0.5,
-            pointerEvents: 'none',
-            zIndex: 9999
+            fontSize: '12px',
+            backgroundColor: '#ef4444',
+            color: 'white',
+            fontWeight: 'bold',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            zIndex: 9999,
+            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
         }}>
-            v3.2
+            v3.3
         </div>
     </>);
 };
