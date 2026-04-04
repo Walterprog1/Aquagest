@@ -14,63 +14,79 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
         setIsLoading(true);
         setError(null);
         try {
-            // 1. Obtener dispensers instalados
-            const { data: dbDispensers, error: dispError } = await supabase
+            // 1. Obtener dispensers - no filtramos por estado aquí para capturar posibles variaciones ocultas
+            const { data: dbDispensersRaw, error: dispError } = await supabase
                 .from('dispensers')
-                .select(`*, clientes (id, nombre)`)
-                .eq('estado', 'Instalado');
+                .select(`*, clientes (id, nombre)`);
             
             if (dispError) {
                 console.error("Error al buscar dispensers:", dispError);
                 throw dispError;
             }
 
+            // Filtramos en memoria para máxima flexibilidad de casing y espacios
+            const dbDispensers = (dbDispensersRaw || []).filter(d => 
+                d.estado && d.estado.toLowerCase().includes('instalado')
+            );
+
             // 2. Definir rango del mes seleccionado
             const mesStr = selectedMonth < 10 ? `0${selectedMonth}` : `${selectedMonth}`;
             const inicioMes = `${selectedYear}-${mesStr}-01`;
-            const finMes = new Date(selectedYear, selectedMonth, 0).toISOString().split('T')[0];
+            
+            // Calculamos el último día del mes localmente y concatenamos
+            const maxDays = new Date(selectedYear, selectedMonth, 0).getDate();
+            const finMes = `${selectedYear}-${mesStr}-${maxDays < 10 ? '0'+maxDays : maxDays}`;
             
             // 3. Obtener operaciones "Alquiler Dispenser" del periodo
-            const { data: operaciones, error: opError } = await supabase
+            let operaciones = [];
+            const { data: opsData, error: opError } = await supabase
                 .from('operaciones')
                 .select('entidad_referencia, monto, fecha')
-                .eq('categoria', 'Alquiler Dispenser')
+                .ilike('categoria', '%Alquiler Dispenser%')
                 .gte('fecha', inicioMes)
                 .lte('fecha', finMes);
             
             if (opError) {
-                console.error("Error al buscar operaciones:", opError);
-                throw opError;
+                console.error("Error al buscar operaciones (Opcional):", opError);
+                setError(prev => prev ? prev + " | Error Operaciones" : "Error Operaciones");
+            } else {
+                operaciones = opsData || [];
             }
 
             // 4. Obtener pedidos del periodo para cuota (bidones)
-            // IMPORTANTE: detalles_pedido es una TABLA relacionada, no una columna JSONB
-            const { data: pedidos, error: pedError } = await supabase
+            let pedidos = [];
+            const { data: pedData, error: pedError } = await supabase
                 .from('pedidos')
                 .select('cliente_id, detalles_pedido(cantidad, producto)')
-                .eq('estado', 'Entregado')
+                .ilike('estado', '%entregado%')
                 .gte('fecha', inicioMes)
                 .lte('fecha', finMes);
             
             if (pedError) {
-                console.error("Error al buscar pedidos:", pedError);
-                throw pedError;
+                console.error("Error al buscar pedidos (Opcional):", pedError);
+                setError(prev => prev ? prev + " | Error Pedidos rel" : "Error Pedidos rel");
+            } else {
+                pedidos = pedData || [];
             }
 
             // 5. Procesar datos
             const listaProcesada = (dbDispensers || []).map((disp) => {
-                const clienteId = disp.clientes?.id;
+                // RLS on clientes table might make disp.clientes null or undefined.
+                const clienteId = disp.clientes ? disp.clientes.id : null;
+                const clienteNombre = disp.clientes ? disp.clientes.nombre : 'Desconocido';
                 
                 // Buscar si pagó en ESTE periodo seleccionado
-                const pagoRealizado = (operaciones || []).find(op => op.entidad_referencia === clienteId);
+                const pagoRealizado = (operaciones || []).find(op => op.entidad_referencia === clienteId && clienteId != null);
                 
                 let totalBidones = 0;
-                const pedidosCliente = (pedidos || []).filter(p => p.cliente_id === clienteId);
+                const pedidosCliente = (pedidos || []).filter(p => p.cliente_id === clienteId && clienteId != null);
                 pedidosCliente.forEach(p => {
                     (p.detalles_pedido || []).forEach(d => {
-                        const esBidon = d.producto?.toLowerCase().includes('bidon') || 
-                                       d.producto?.toLowerCase().includes('bidón') ||
-                                       d.producto?.toLowerCase().includes('20l');
+                        // SAFE CHECK: Si d.producto es undefined/null
+                        const prod = d.producto || '';
+                        const esBidon = prod.toLowerCase().includes('bidon') || 
+                                        prod.toLowerCase().includes('bidón') ||
+                                        prod.toLowerCase().includes('20l');
                         if (esBidon) totalBidones += (Number(d.cantidad) || 0);
                     });
                 });
@@ -78,7 +94,7 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                 return {
                     dispenser_id: disp.id,
                     cliente_id: clienteId,
-                    cliente_nombre: disp.clientes?.nombre || 'Desconocido',
+                    cliente_nombre: clienteNombre,
                     modelo: disp.modelo,
                     bidones_entregados: totalBidones,
                     pagado: !!pagoRealizado,
@@ -93,8 +109,9 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
 
             setAlquileres(listaProcesada);
         } catch (error) {
-            console.error("Error al cargar alquileres:", error);
+            console.error("Error Crítico al cargar alquileres:", error);
             setError(error.message || "Error desconocido al conectar con la base de datos");
+            setAlquileres([]);
         } finally {
             setIsLoading(false);
         }
