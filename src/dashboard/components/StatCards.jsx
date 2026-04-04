@@ -2,7 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
 const StatCard = ({ title, value, colorClass, linkLabel, onClick, onSecondaryClick, secondaryLinkLabel }) => (
-    <div className={`stat-card ${colorClass}`} style={{ cursor: onClick ? 'pointer' : 'default' }}>
+    <div 
+        className={`stat-card ${colorClass}`} 
+        onClick={onClick}
+        style={{ cursor: onClick ? 'pointer' : 'default' }}
+    >
         <div className="stat-content">
             <h3 className="stat-title">{title}</h3>
             <div className="stat-value">{value}</div>
