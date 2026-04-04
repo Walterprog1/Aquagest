@@ -17,6 +17,7 @@ import WhatsappMassiveModal from './components/WhatsappMassiveModal';
 import PedidosListModal from './components/PedidosListModal';
 import RepartosListModal from './components/RepartosListModal';
 import ResumenRepartoModal from './components/ResumenRepartoModal';
+import AlquileresListModal from './components/AlquileresListModal';
 
 const Dashboard = ({ user, onLogout }) => {
     const [showClientes, setShowClientes] = React.useState(false);
