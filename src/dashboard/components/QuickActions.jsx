@@ -8,8 +8,6 @@ import OperacionFormModal from './OperacionFormModal';
 import UsuarioFormModal from './UsuarioFormModal';
 import ResumenFormModal from './ResumenFormModal';
 import DispenserFormModal from './DispenserFormModal';
-import DispenserFormModal from './DispenserFormModal';
-
 const ActionButton = ({ icon, label, onClick }) => (
     <button className="action-btn" onClick={onClick}>
         <div className="action-icon">{icon}</div>
