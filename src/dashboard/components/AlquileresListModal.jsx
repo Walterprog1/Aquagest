@@ -12,18 +12,21 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
     const fetchAlquileres = async () => {
         setIsLoading(true);
         try {
-            // 1. Obtener dispensers instalados
+            // 1. Obtener dispensers instalados - Usamos ilike para evitar problemas de capitalización
             const { data: dbDispensers, error: dispError } = await supabase
                 .from('dispensers')
                 .select(`*, clientes (id, nombre)`)
-                .eq('estado', 'Instalado');
+                .ilike('estado', 'instalado');
             
-            if (dispError) throw dispError;
+            if (dispError) {
+                console.error("Error al buscar dispensers:", dispError);
+                throw dispError;
+            }
 
             // 2. Definir rango del mes seleccionado
             const mesStr = selectedMonth < 10 ? `0${selectedMonth}` : `${selectedMonth}`;
             const inicioMes = `${selectedYear}-${mesStr}-01`;
-            const finMes = new Date(selectedYear, selectedMonth, 0).toLocaleDateString('en-CA');
+            const finMes = new Date(selectedYear, selectedMonth, 0).toISOString().split('T')[0];
             
             // 3. Obtener operaciones "Alquiler Dispenser" del periodo
             const { data: operaciones, error: opError } = await supabase
@@ -33,7 +36,10 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                 .gte('fecha', inicioMes)
                 .lte('fecha', finMes);
             
-            if (opError) throw opError;
+            if (opError) {
+                console.error("Error al buscar operaciones:", opError);
+                throw opError;
+            }
 
             // 4. Obtener pedidos del periodo para cuota (bidones)
             const { data: pedidos, error: pedError } = await supabase
@@ -43,7 +49,10 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                 .gte('fecha', inicioMes)
                 .lte('fecha', finMes);
             
-            if (pedError) throw pedError;
+            if (pedError) {
+                console.error("Error al buscar pedidos:", pedError);
+                throw pedError;
+            }
 
             // 5. Procesar datos
             const listaProcesada = (dbDispensers || []).map((disp) => {
