@@ -49,7 +49,8 @@ const Dashboard = ({ user, onLogout }) => {
     };
 
     return (
-        <div className="dashboard-container">
+        <>
+            <div className="dashboard-container">
             <Header user={user} onLogout={onLogout} />
 
             <main className="content">
@@ -157,7 +158,19 @@ const Dashboard = ({ user, onLogout }) => {
                 onClose={() => setShowAlquileres(false)}
             />
         </div>
-    );
+        <div style={{
+            position: 'fixed',
+            bottom: '10px',
+            right: '10px',
+            fontSize: '10px',
+            color: 'var(--text-gray)',
+            opacity: 0.5,
+            pointerEvents: 'none',
+            zIndex: 9999
+        }}>
+            v3.0
+        </div>
+    </>);
 };
 
 export default Dashboard;
