@@ -54,11 +54,11 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
             }
 
             // 4. Obtener pedidos del periodo para cuota (bidones)
+            // Traemos todos los campos para evitar bugs de PostgREST y filtramos En Memoria
             let pedidos = [];
             const { data: pedData, error: pedError } = await supabase
                 .from('pedidos')
-                .select('cliente_id, detalles_pedido(cantidad, producto)')
-                .ilike('estado', '%entregado%')
+                .select('*, detalles_pedido(*)')
                 .gte('fecha', inicioMes)
                 .lte('fecha', finMes);
             
@@ -66,7 +66,8 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                 console.error("Error al buscar pedidos (Opcional):", pedError);
                 setError(prev => prev ? prev + " | Error Pedidos rel" : "Error Pedidos rel");
             } else {
-                pedidos = pedData || [];
+                // Filtramos por entregado EN MEMORIA para asegurar compatibilidad de casos/espacios
+                pedidos = (pedData || []).filter(p => p.estado && p.estado.toLowerCase().includes('entregado'));
             }
 
             // 5. Procesar datos
@@ -76,18 +77,18 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                 const clienteNombre = disp.clientes ? disp.clientes.nombre : 'Desconocido';
                 
                 // Buscar si pagó en ESTE periodo seleccionado
-                const pagoRealizado = (operaciones || []).find(op => op.entidad_referencia === clienteId && clienteId != null);
+                const pagoRealizado = (operaciones || []).find(op => op.entidad_referencia == clienteId && clienteId != null);
                 
                 let totalBidones = 0;
-                const pedidosCliente = (pedidos || []).filter(p => p.cliente_id === clienteId && clienteId != null);
+                const pedidosCliente = pedidos.filter(p => p.cliente_id == clienteId && clienteId != null);
                 pedidosCliente.forEach(p => {
                     (p.detalles_pedido || []).forEach(d => {
-                        // SAFE CHECK: Si d.producto es undefined/null
-                        const prod = d.producto || '';
-                        const esBidon = prod.toLowerCase().includes('bidon') || 
-                                        prod.toLowerCase().includes('bidón') ||
-                                        prod.toLowerCase().includes('20l');
-                        if (esBidon) totalBidones += (Number(d.cantidad) || 0);
+                        // SAFE CHECK: Detección mega-amplia de bidones (incluye cualquier variante de Bidon/Bidón/20L/12L)
+                        const prod = (d.producto || '').toLowerCase();
+                        const esBidon = prod.includes('bid') || prod.includes('20') || prod.includes('12');
+                        if (esBidon) {
+                            totalBidones += (Number(d.cantidad) || 0);
+                        }
                     });
                 });
 
