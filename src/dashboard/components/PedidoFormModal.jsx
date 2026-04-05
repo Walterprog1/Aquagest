@@ -153,6 +153,10 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         let cantEntregada = 0;
                         let preUnitario = precioSugerido;
 
+                        console.log('[DEBUG] Detalle obtenido:', detalle);
+                        console.log('[DEBUG] pReal.total:', pReal.total);
+                        console.log('[DEBUG] pReal.envases_recibidos:', pReal.envases_recibidos);
+
                         if (detalle) {
                             cantEntregada = detalle.cantidad;
                             preUnitario = detalle.precio_unitario;
@@ -165,6 +169,9 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                             preUnitario = precioSugerido;
                             cantEntregada = Number(pReal.envases_recibidos); // Sugerencia técnica
                         }
+
+                        console.log('[DEBUG] cantEntregada final:', cantEntregada);
+                        console.log('[DEBUG] preUnitario final:', preUnitario);
 
                         const cleanFecha = pReal.fecha ? (pReal.fecha.includes('T') ? pReal.fecha.split('T')[0] : pReal.fecha) : '';
                         if (cleanFecha) await cargarRepartos(cleanFecha);
@@ -179,6 +186,8 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                             medioPago: pReal.medio_pago || '',
                             notas: pReal.notas || ''
                         });
+
+                        console.log('[DEBUG] formData seteada con envasesEntregados:', Number(cantEntregada));
                     } else {
                         setAlquilerInfo(null);
                         setIsAlquilerLoading(false);
