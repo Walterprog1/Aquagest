@@ -11,6 +11,7 @@ const DispenserFormModal = ({ isOpen, onClose, dispenserAEditar }) => {
         estado: 'disponible',
         cliente_id: '',
         fecha_instalacion: '',
+        precio_alquiler: '',
         notas: ''
     });
 
@@ -30,6 +31,7 @@ const DispenserFormModal = ({ isOpen, onClose, dispenserAEditar }) => {
                     estado: dispenserAEditar.estado || 'disponible',
                     cliente_id: dispenserAEditar.cliente_id || '',
                     fecha_instalacion: dispenserAEditar.fecha_instalacion || '',
+                    precio_alquiler: dispenserAEditar.precio_alquiler || '',
                     notas: dispenserAEditar.notas || ''
                 });
             } else {
@@ -39,6 +41,7 @@ const DispenserFormModal = ({ isOpen, onClose, dispenserAEditar }) => {
                     estado: 'disponible',
                     cliente_id: '',
                     fecha_instalacion: '',
+                    precio_alquiler: '',
                     notas: ''
                 });
             }
@@ -64,6 +67,7 @@ const DispenserFormModal = ({ isOpen, onClose, dispenserAEditar }) => {
                 estado: formData.estado,
                 cliente_id: formData.estado === 'instalado' ? (formData.cliente_id || null) : null,
                 fecha_instalacion: formData.estado === 'instalado' ? (formData.fecha_instalacion || null) : null,
+                precio_alquiler: formData.estado === 'instalado' ? (formData.precio_alquiler || null) : null,
                 notas: formData.notas,
                 user_id: user.id
             };
@@ -150,6 +154,9 @@ const DispenserFormModal = ({ isOpen, onClose, dispenserAEditar }) => {
 
                         <label style={labelStyle}>Fecha de Instalación</label>
                         <input style={{ ...inputStyle, marginBottom: 0 }} type="date" name="fecha_instalacion" value={formData.fecha_instalacion} onChange={handleChange} />
+
+                        <label style={labelStyle}>Valor de Alquiler Mensual ($)</label>
+                        <input style={{ ...inputStyle, marginBottom: 0 }} type="number" name="precio_alquiler" value={formData.precio_alquiler} onChange={handleChange} placeholder="Ej: 5000" />
                     </div>
                 )}
 
