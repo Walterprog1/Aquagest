@@ -141,9 +141,11 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                             });
                             console.log('[DEBUG] Total entregados:', entregados);
                             setAlquilerInfo({ tieneDispenser: true, bidonesEntregadosEsteMes: entregados });
+                            console.log('[DEBUG] alquilerInfo seteado a: { tieneDispenser: true, bidonesEntregadosEsteMes:', entregados, '}');
                         } else {
                             console.log('[DEBUG] No se encontró dispenser para este cliente');
                             setAlquilerInfo(null);
+                            console.log('[DEBUG] alquilerInfo seteado a: null');
                         }
                         setIsAlquilerLoading(false);
 
@@ -273,14 +275,20 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         let cantInt = Number(formData.envasesEntregados) || 0;
         let pUnit = Number(formData.precioUnitario) || 0;
         
+        console.log('[DEBUG useMemo]计算中: cantInt=', cantInt, 'pUnit=', pUnit, 'alquilerInfo=', alquilerInfo);
+        
         if (alquilerInfo && alquilerInfo.tieneDispenser) {
             let yaEntregados = alquilerInfo.bidonesEntregadosEsteMes || 0;
             let cupoGratisRestante = Math.max(0, 3 - yaEntregados);
             let cobrarEnvases = Math.max(0, cantInt - cupoGratisRestante);
-            return cobrarEnvases * pUnit;
+            let resultado = cobrarEnvases * pUnit;
+            console.log('[DEBUG useMemo] Es dispenser: cobrar', cobrarEnvases, 'x', pUnit, '=', resultado);
+            return resultado;
         }
         
-        return cantInt * pUnit;
+        let resultado = cantInt * pUnit;
+        console.log('[DEBUG useMemo] No es dispenser:', cantInt, 'x', pUnit, '=', resultado);
+        return resultado;
     }, [formData.envasesEntregados, formData.precioUnitario, alquilerInfo]);
 
     const handleSubmit = async (e) => {
