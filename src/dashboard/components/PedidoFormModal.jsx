@@ -7,6 +7,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
     const [repartosDisponibles, setRepartosDisponibles] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingData, setIsLoadingData] = useState(false);
+    const [isAlquilerLoading, setIsAlquilerLoading] = useState(false);
     const [alquilerInfo, setAlquilerInfo] = useState(null);
 
     const [formData, setFormData] = useState({
@@ -96,6 +97,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         const clienteData = clientesActuales.find(c => c.id === pReal.cliente_id);
                         const precioSugerido = clienteData?.precio_especial ? Number(clienteData.precio_especial) : 2500;
 
+                        setIsAlquilerLoading(true);
                         const { data: dispenser } = await supabase
                             .from('dispensers')
                             .select('id')
@@ -125,6 +127,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         } else {
                             setAlquilerInfo(null);
                         }
+                        setIsAlquilerLoading(false);
 
                         // 4. Lógica de recuperación de cantidad
                         let cantEntregada = 0;
@@ -158,6 +161,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         });
                     } else {
                         setAlquilerInfo(null);
+                        setIsAlquilerLoading(false);
                         const hoy = new Date().toLocaleDateString('en-CA');
                         setFormData({
                             cliente: '', repartoId: '', fecha: hoy,
@@ -183,6 +187,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
             if (!formData.cliente || pedidoAEditar) return; // Si es edición, ya se hizo en inicializar()
             
             try {
+                setIsAlquilerLoading(true);
                 const { data: dispenser } = await supabase
                     .from('dispensers')
                     .select('id')
@@ -214,6 +219,8 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                 }
             } catch (err) {
                 console.error("Error al buscar dispenser manual:", err);
+            } finally {
+                setIsAlquilerLoading(false);
             }
         };
         
@@ -506,7 +513,11 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         </div>
                     </div>
 
-                    {alquilerInfo && alquilerInfo.tieneDispenser && (
+                    {isAlquilerLoading ? (
+                        <div style={{ backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', padding: '0.75rem', borderRadius: 'var(--border-radius-md)', marginBottom: '1rem', fontSize: '0.875rem', color: '#0369a1' }}>
+                            ⏳ Verificando beneficio de dispenser...
+                        </div>
+                    ) : alquilerInfo && alquilerInfo.tieneDispenser && (
                         <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', padding: '0.75rem', borderRadius: 'var(--border-radius-md)', marginBottom: '1rem', fontSize: '0.875rem', color: '#1e3a8a' }}>
                             🏆 <strong>Cliente con Dispenser Alquilado.</strong> Beneficio: 3 bidones sin cargo por mes.<br/>
                             Ya consumió <strong>{alquilerInfo.bidonesEntregadosEsteMes}</strong> de 3 este mes. 
@@ -529,7 +540,11 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         <div style={{ flex: 1, textAlign: 'right', paddingRight: '1rem' }}>
                             <span style={{ fontSize: '0.875rem', color: 'var(--text-gray)' }}>Total:</span>
                             <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary-blue)' }}>
-                                ${calcularTotal}
+                                {isAlquilerLoading ? (
+                                    <span style={{ fontSize: '1rem', color: '#94a3b8' }}>Calculando...</span>
+                                ) : (
+                                    `$${calcularTotal}`
+                                )}
                             </div>
                         </div>
                     </div>
