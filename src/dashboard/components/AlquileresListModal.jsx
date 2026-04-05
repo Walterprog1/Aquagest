@@ -43,7 +43,7 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
             let operaciones = [];
             const { data: opsData, error: opError } = await supabase
                 .from('operaciones')
-                .select('entidad_referencia, monto, fecha')
+                .select('id, entidad_referencia, monto, fecha')
                 .ilike('categoria', '%Alquiler Dispenser%');
                 // IMPORTANTE: Quitamos filtros de fecha TEMPORALMENTE para validar de por vida
             
@@ -105,6 +105,11 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                 // Buscar si pagó en ESTE periodo seleccionado
                 const pagoRealizado = (operaciones || []).find(op => String(op.entidad_referencia) === String(clienteId) && clienteId != null);
 
+                let operacionId = null;
+                if (pagoRealizado) {
+                    operacionId = pagoRealizado.id;
+                }
+
                 let totalBidones = 0;
                 const pedidosCliente = pedidos.filter(p => String(p.cliente_id) === String(clienteId) && clienteId != null);
 
@@ -134,6 +139,7 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                     bidones_entregados: totalBidones,
                     pagado: !!pagoRealizado,
                     monto_pagado: pagoRealizado ? pagoRealizado.monto : 0,
+                    operacion_id: operacionId,
                     debug: debugInfo
                 };
             });
@@ -187,9 +193,29 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
             
             if (error) throw error;
             
-            fetchAlquileres(); // Recargar
+            fetchAlquileres();
         } catch (error) {
             console.error("Error al registrar cobro:", error);
+            alert("Error: " + error.message);
+        }
+    };
+
+    const handleDeshacerPago = async (operacionId, clienteNombre) => {
+        if (!window.confirm(`¿Estás seguro de deshacer el pago registrado de ${clienteNombre}?\n\nEsta acción eliminará el registro de la operación.`)) {
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('operaciones')
+                .delete()
+                .eq('id', operacionId);
+            
+            if (error) throw error;
+            
+            fetchAlquileres();
+        } catch (error) {
+            console.error("Error al deshacer pago:", error);
             alert("Error: " + error.message);
         }
     };
@@ -294,7 +320,14 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                                         )}
                                     </td>
                                     <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                                        {!a.pagado && (
+                                        {a.pagado ? (
+                                            <button 
+                                                onClick={() => handleDeshacerPago(a.operacion_id, a.cliente_nombre)}
+                                                style={{ padding: '4px 12px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }}
+                                            >
+                                                Deshacer
+                                            </button>
+                                        ) : (
                                             <button 
                                                 onClick={() => handleCobrar(a.cliente_id, a.cliente_nombre)}
                                                 style={{ padding: '4px 12px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }}
