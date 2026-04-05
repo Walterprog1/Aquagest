@@ -63,7 +63,8 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                 .select('*') // Sin JOIN para evitar bugs de PostgREST
                 .gte('fecha', inicioMes)
                 .lte('fecha', finMes);
-            
+
+            console.log("[DEBUG Alquileres] pedData crudos (sin filtrar):", pedData?.length, "rango:", inicioMes, "a", finMes, pedData);
             if (pedError) {
                 console.error("Error al buscar pedidos (Opcional):", pedError);
                 setError(prev => prev ? prev + " | Error Pedidos" : "Error Pedidos");
