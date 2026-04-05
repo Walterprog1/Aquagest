@@ -266,7 +266,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("No autenticado");
 
-            const totalCalculado = calcularTotal();
+            const totalCalculado = calcularTotal;
             let derivedEstado = 'Entregado';
             let derivedPagoEstado = 'pendiente';
 
@@ -529,7 +529,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         <div style={{ flex: 1, textAlign: 'right', paddingRight: '1rem' }}>
                             <span style={{ fontSize: '0.875rem', color: 'var(--text-gray)' }}>Total:</span>
                             <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary-blue)' }}>
-                                ${calcularTotal()}
+                                ${calcularTotal}
                             </div>
                         </div>
                     </div>
