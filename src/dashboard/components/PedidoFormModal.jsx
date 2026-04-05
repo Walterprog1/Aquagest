@@ -98,33 +98,51 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                         const precioSugerido = clienteData?.precio_especial ? Number(clienteData.precio_especial) : 2500;
 
                         setIsAlquilerLoading(true);
-                        const { data: dispenser } = await supabase
+                        const { data: allDispensers } = await supabase
                             .from('dispensers')
-                            .select('id')
-                            .eq('cliente_id', pReal.cliente_id)
-                            .eq('estado', 'Instalado')
-                            .maybeSingle();
+                            .select('id, estado')
+                            .eq('cliente_id', pReal.cliente_id);
+
+                        const dispenser = (allDispensers || []).find(d => 
+                            d.estado && d.estado.toLowerCase().includes('instalado')
+                        );
+
+                        console.log('[DEBUG] Todos los dispensers del cliente:', allDispensers);
+                        console.log('[DEBUG] Dispenser encontrado (filtrado):', dispenser);
+                        console.log('[DEBUG] Cliente ID:', pReal.cliente_id);
+                        console.log('[DEBUG] Pedido ID a editar:', pedidoAEditar.id);
 
                         if (dispenser) {
                             const mesActual = new Date().toISOString().substring(0, 7) + '-01';
+                            console.log('[DEBUG] Mes actual (filtro):', mesActual);
+                            
                             const { data: pedidosEsteMes } = await supabase
                                 .from('pedidos')
-                                .select('id, detalles_pedido(cantidad, producto)')
+                                .select('id, fecha, detalles_pedido(cantidad, producto)')
                                 .eq('cliente_id', pReal.cliente_id)
                                 .gte('fecha', mesActual);
 
+                            console.log('[DEBUG] Pedidos este mes:', pedidosEsteMes);
+
                             let entregados = 0;
                             pedidosEsteMes?.forEach(p => {
-                                if (p.id === pedidoAEditar.id) return;
+                                console.log('[DEBUG] Procesando pedido:', p.id, 'fecha:', p.fecha);
+                                if (String(p.id) === String(pedidoAEditar.id)) {
+                                    console.log('[DEBUG] Excluyendo pedido actual:', p.id);
+                                    return;
+                                }
                                 (p.detalles_pedido || []).forEach(d => {
                                     const esBidon = d.producto?.toLowerCase().includes('bidon') || 
                                                    d.producto?.toLowerCase().includes('bidón') ||
                                                    d.producto?.toLowerCase().includes('20l');
+                                    console.log('[DEBUG] Detalle:', d.producto, 'esBidon:', esBidon, 'cantidad:', d.cantidad);
                                     if (esBidon) entregados += (Number(d.cantidad) || 0);
                                 });
                             });
+                            console.log('[DEBUG] Total entregados:', entregados);
                             setAlquilerInfo({ tieneDispenser: true, bidonesEntregadosEsteMes: entregados });
                         } else {
+                            console.log('[DEBUG] No se encontró dispenser para este cliente');
                             setAlquilerInfo(null);
                         }
                         setIsAlquilerLoading(false);
