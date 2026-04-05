@@ -68,21 +68,24 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
             } else {
                 let peds = pedData || [];
                 
-                // Paso B: Obtener detalles manualmente por in()
+                // Paso B: Obtener detalles manualmente explícitos
                 const pedIds = peds.map(p => p.id);
                 let detalles = [];
+                let fetchErrorDetail = '';
                 if (pedIds.length > 0) {
-                    const { data: detData } = await supabase
+                    const { data: detData, error: detErr } = await supabase
                         .from('detalles_pedido')
-                        .select('*')
+                        .select('pedido_id, producto, cantidad, precio_unitario')
                         .in('pedido_id', pedIds);
+                    if (detErr) fetchErrorDetail = detErr.message;
                     detalles = detData || [];
                 }
                 
                 // Paso C: Ensamblar En Memoria y filtrar
                 pedidos = peds.map(p => ({
                     ...p,
-                    detalles_pedido: detalles.filter(d => d.pedido_id === p.id)
+                    detErrStr: fetchErrorDetail,
+                    detalles_pedido: detalles.filter(d => String(d.pedido_id) === String(p.id))
                 })).filter(p => p.estado && p.estado.toLowerCase().includes('entregado'));
             }
 
@@ -93,10 +96,10 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                 const clienteNombre = disp.clientes ? disp.clientes.nombre : 'Desconocido';
                 
                 // Buscar si pagó en ESTE periodo seleccionado
-                const pagoRealizado = (operaciones || []).find(op => op.entidad_referencia == clienteId && clienteId != null);
+                const pagoRealizado = (operaciones || []).find(op => String(op.entidad_referencia) === String(clienteId) && clienteId != null);
                 
                 let totalBidones = 0;
-                const pedidosCliente = pedidos.filter(p => p.cliente_id == clienteId && clienteId != null);
+                const pedidosCliente = pedidos.filter(p => String(p.cliente_id) === String(clienteId) && clienteId != null);
                 
                 let debugInfo = `PedsFound: ${pedidosCliente.length} `;
                 pedidosCliente.forEach(p => {
@@ -104,10 +107,10 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                     debugInfo += `[Est:${p.estado} DetLen:${det ? det.length : 'NULL'}] `;
                     
                     (det || []).forEach(d => {
-                        // SAFE CHECK: Detección mega-amplia de bidones (incluye cualquier variante de Bidon/Bidón/20L/12L)
+                        // Detección de bidones consistente con PedidoFormModal.jsx
                         const prod = (d.producto || '').toLowerCase();
                         debugInfo += `(${prod}=${d.cantidad}) `;
-                        const esBidon = prod.includes('bid') || prod.includes('20') || prod.includes('12');
+                        const esBidon = prod.includes('bidon') || prod.includes('bidón') || prod.includes('20l');
                         if (esBidon) {
                             totalBidones += (Number(d.cantidad) || 0);
                         }
