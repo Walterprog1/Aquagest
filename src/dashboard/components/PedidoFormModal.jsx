@@ -107,14 +107,8 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                             d.estado && d.estado.toLowerCase().includes('instalado')
                         );
 
-                        console.log('[DEBUG] Todos los dispensers del cliente:', allDispensers);
-                        console.log('[DEBUG] Dispenser encontrado (filtrado):', dispenser);
-                        console.log('[DEBUG] Cliente ID:', pReal.cliente_id);
-                        console.log('[DEBUG] Pedido ID a editar:', pedidoAEditar.id);
-
                         if (dispenser) {
                             const mesActual = new Date().toISOString().substring(0, 7) + '-01';
-                            console.log('[DEBUG] Mes actual (filtro):', mesActual);
                             
                             const { data: pedidosEsteMes } = await supabase
                                 .from('pedidos')
@@ -122,40 +116,24 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                                 .eq('cliente_id', pReal.cliente_id)
                                 .gte('fecha', mesActual);
 
-                            console.log('[DEBUG] Pedidos este mes:', pedidosEsteMes);
-
                             let entregados = 0;
                             pedidosEsteMes?.forEach(p => {
-                                console.log('[DEBUG] Procesando pedido:', p.id, 'fecha:', p.fecha);
-                                if (String(p.id) === String(pedidoAEditar.id)) {
-                                    console.log('[DEBUG] Excluyendo pedido actual:', p.id);
-                                    return;
-                                }
+                                if (String(p.id) === String(pedidoAEditar.id)) return;
                                 (p.detalles_pedido || []).forEach(d => {
                                     const esBidon = d.producto?.toLowerCase().includes('bidon') || 
                                                    d.producto?.toLowerCase().includes('bidón') ||
                                                    d.producto?.toLowerCase().includes('20l');
-                                    console.log('[DEBUG] Detalle:', d.producto, 'esBidon:', esBidon, 'cantidad:', d.cantidad);
                                     if (esBidon) entregados += (Number(d.cantidad) || 0);
                                 });
                             });
-                            console.log('[DEBUG] Total entregados:', entregados);
                             setAlquilerInfo({ tieneDispenser: true, bidonesEntregadosEsteMes: entregados });
-                            console.log('[DEBUG] alquilerInfo seteado a: { tieneDispenser: true, bidonesEntregadosEsteMes:', entregados, '}');
                         } else {
-                            console.log('[DEBUG] No se encontró dispenser para este cliente');
                             setAlquilerInfo(null);
-                            console.log('[DEBUG] alquilerInfo seteado a: null');
                         }
                         setIsAlquilerLoading(false);
 
-                        // 4. Lógica de recuperación de cantidad
                         let cantEntregada = 0;
                         let preUnitario = precioSugerido;
-
-                        console.log('[DEBUG] Detalle obtenido:', detalle);
-                        console.log('[DEBUG] pReal.total:', pReal.total);
-                        console.log('[DEBUG] pReal.envases_recibidos:', pReal.envases_recibidos);
 
                         if (detalle) {
                             cantEntregada = detalle.cantidad;
@@ -164,14 +142,9 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                             preUnitario = precioSugerido;
                             cantEntregada = Math.round(Number(pReal.total) / Number(preUnitario)) || 0;
                         } else if (pReal.total === 0 && Number(pReal.envases_recibidos) > 0) {
-                            // SI ES DISPENSER Y NO HAY DETALLE: Sugerimos al menos 1 o intentamos deducir
-                            // pero permitimos que el usuario edite sin resetear a 0.
                             preUnitario = precioSugerido;
-                            cantEntregada = Number(pReal.envases_recibidos); // Sugerencia técnica
+                            cantEntregada = Number(pReal.envases_recibidos);
                         }
-
-                        console.log('[DEBUG] cantEntregada final:', cantEntregada);
-                        console.log('[DEBUG] preUnitario final:', preUnitario);
 
                         const cleanFecha = pReal.fecha ? (pReal.fecha.includes('T') ? pReal.fecha.split('T')[0] : pReal.fecha) : '';
                         if (cleanFecha) await cargarRepartos(cleanFecha);
@@ -186,8 +159,6 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                             medioPago: pReal.medio_pago || '',
                             notas: pReal.notas || ''
                         });
-
-                        console.log('[DEBUG] formData seteada con envasesEntregados:', Number(cantEntregada));
                     } else {
                         setAlquilerInfo(null);
                         setIsAlquilerLoading(false);
@@ -284,20 +255,14 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         let cantInt = Number(formData.envasesEntregados) || 0;
         let pUnit = Number(formData.precioUnitario) || 0;
         
-        console.log('[DEBUG useMemo]计算中: cantInt=', cantInt, 'pUnit=', pUnit, 'alquilerInfo=', alquilerInfo);
-        
         if (alquilerInfo && alquilerInfo.tieneDispenser) {
             let yaEntregados = alquilerInfo.bidonesEntregadosEsteMes || 0;
             let cupoGratisRestante = Math.max(0, 3 - yaEntregados);
             let cobrarEnvases = Math.max(0, cantInt - cupoGratisRestante);
-            let resultado = cobrarEnvases * pUnit;
-            console.log('[DEBUG useMemo] Es dispenser: cobrar', cobrarEnvases, 'x', pUnit, '=', resultado);
-            return resultado;
+            return cobrarEnvases * pUnit;
         }
         
-        let resultado = cantInt * pUnit;
-        console.log('[DEBUG useMemo] No es dispenser:', cantInt, 'x', pUnit, '=', resultado);
-        return resultado;
+        return cantInt * pUnit;
     }, [formData.envasesEntregados, formData.precioUnitario, alquilerInfo]);
 
     const handleSubmit = async (e) => {
