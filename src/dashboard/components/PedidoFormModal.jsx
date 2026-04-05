@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Modal from './Modal';
 import { supabase } from '../../lib/supabase';
 
@@ -100,7 +100,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
                             .from('dispensers')
                             .select('id')
                             .eq('cliente_id', pReal.cliente_id)
-                            .eq('estado', 'instalado')
+                            .eq('estado', 'Instalado')
                             .maybeSingle();
 
                         if (dispenser) {
@@ -244,7 +244,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const calcularTotal = () => {
+    const calcularTotal = useMemo(() => {
         let cantInt = Number(formData.envasesEntregados) || 0;
         let pUnit = Number(formData.precioUnitario) || 0;
         
@@ -256,7 +256,7 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
         }
         
         return cantInt * pUnit;
-    };
+    }, [formData.envasesEntregados, formData.precioUnitario, alquilerInfo]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
