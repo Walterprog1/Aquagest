@@ -25,9 +25,11 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
             }
 
             // Filtramos en memoria para máxima flexibilidad de casing y espacios
-            const dbDispensers = (dbDispensersRaw || []).filter(d => 
+            const dbDispensers = (dbDispensersRaw || []).filter(d =>
                 d.estado && d.estado.toLowerCase().includes('instalado')
             );
+
+            console.log("[DEBUG Alquileres] Dispensers instalados:", dbDispensers.length, dbDispensers.map(d => ({id: d.id, cliente: d.clientes?.nombre, estado: d.estado})));
 
             // 2. Definir rango del mes seleccionado
             const mesStr = selectedMonth < 10 ? `0${selectedMonth}` : `${selectedMonth}`;
@@ -87,6 +89,8 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                     detErrStr: fetchErrorDetail,
                     detalles_pedido: detalles.filter(d => String(d.pedido_id) === String(p.id))
                 })).filter(p => p.estado && p.estado.toLowerCase().includes('entregado'));
+
+                console.log("[DEBUG Alquileres] Pedidos filtrados (entregados):", pedidos.length, pedidos.map(p => ({id: p.id, cliente_id: p.cliente_id, estado: p.estado, detalles: p.detalles_pedido})));
             }
 
             // 5. Procesar datos
@@ -94,13 +98,16 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                 // RLS on clientes table might make disp.clientes null or undefined.
                 const clienteId = disp.clientes ? disp.clientes.id : null;
                 const clienteNombre = disp.clientes ? disp.clientes.nombre : 'Desconocido';
-                
+
+                console.log("[DEBUG Alquileres] Procesando dispenser:", disp.id, "clienteId:", clienteId, "clienteNombre:", clienteNombre);
                 // Buscar si pagó en ESTE periodo seleccionado
                 const pagoRealizado = (operaciones || []).find(op => String(op.entidad_referencia) === String(clienteId) && clienteId != null);
-                
+
                 let totalBidones = 0;
                 const pedidosCliente = pedidos.filter(p => String(p.cliente_id) === String(clienteId) && clienteId != null);
-                
+
+                console.log("[DEBUG Alquileres] pedidosCliente para clienteId", clienteId, ":", pedidosCliente.length, pedidosCliente);
+
                 let debugInfo = `PedsFound: ${pedidosCliente.length} `;
                 pedidosCliente.forEach(p => {
                     const det = p.detalles_pedido;
