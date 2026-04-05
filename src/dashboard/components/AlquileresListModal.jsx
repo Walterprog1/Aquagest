@@ -110,7 +110,7 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                         // Detección de bidones consistente con PedidoFormModal.jsx
                         const prod = (d.producto || '').toLowerCase();
                         debugInfo += `(${prod}=${d.cantidad}) `;
-                        const esBidon = prod.includes('bidon') || prod.includes('bidón') || prod.includes('20l');
+                        const esBidon = prod.includes('bidón') || prod.includes('bidon') || prod.includes('20l');
                         if (esBidon) {
                             totalBidones += (Number(d.cantidad) || 0);
                         }

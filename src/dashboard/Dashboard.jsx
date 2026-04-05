@@ -171,7 +171,7 @@ const Dashboard = ({ user, onLogout }) => {
             zIndex: 9999,
             boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
         }}>
-            v3.9
+            v4.0
         </div>
     </>);
 };
