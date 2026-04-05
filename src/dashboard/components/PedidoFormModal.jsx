@@ -188,12 +188,14 @@ const PedidoFormModal = ({ isOpen, onClose, pedidoAEditar = null }) => {
             
             try {
                 setIsAlquilerLoading(true);
-                const { data: dispenser } = await supabase
+                const { data: allDispensers } = await supabase
                     .from('dispensers')
-                    .select('id')
-                    .eq('cliente_id', formData.cliente)
-                    .eq('estado', 'Instalado')
-                    .maybeSingle();
+                    .select('id, estado')
+                    .eq('cliente_id', formData.cliente);
+
+                const dispenser = (allDispensers || []).find(d => 
+                    d.estado && d.estado.toLowerCase().includes('instalado')
+                );
 
                 if (dispenser) {
                     const mesActual = new Date().toISOString().substring(0, 7) + '-01';
