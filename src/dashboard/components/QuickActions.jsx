@@ -15,7 +15,7 @@ const ActionButton = ({ icon, label, onClick }) => (
     </button>
 );
 
-const QuickActions = ({ onOpenMassiveWA, onOpenAddPedido, onOpenAlquileres }) => {
+const QuickActions = ({ onOpenMassiveWA, onOpenAddPedido }) => {
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [isRepartoModalOpen, setIsRepartoModalOpen] = useState(false);
     const [isStockModalOpen, setIsStockModalOpen] = useState(false);
@@ -37,7 +37,6 @@ const QuickActions = ({ onOpenMassiveWA, onOpenAddPedido, onOpenAlquileres }) =>
         { icon: '📊', label: 'Agregar Resumen' },
         { icon: '📈', label: 'Agregar Stock' },
         { icon: '🚰', label: 'Agregar Dispenser' },
-        { icon: '📆', label: 'Controlar Alquileres' },
         { icon: '📢', label: 'Mensaje Masivo' },
     ];
 
@@ -57,7 +56,6 @@ const QuickActions = ({ onOpenMassiveWA, onOpenAddPedido, onOpenAlquileres }) =>
                     if (action.label === 'Agregar Usuario') clickHandler = () => setIsUsuarioModalOpen(true);
                     if (action.label === 'Agregar Resumen') clickHandler = () => setIsResumenModalOpen(true);
                     if (action.label === 'Agregar Dispenser') clickHandler = () => setIsDispenserModalOpen(true);
-                    if (action.label === 'Controlar Alquileres') clickHandler = onOpenAlquileres;
                     if (action.label === 'Mensaje Masivo') clickHandler = onOpenMassiveWA;
 
                     return (
