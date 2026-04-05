@@ -81,6 +81,7 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
                         .in('pedido_id', pedIds);
                     if (detErr) fetchErrorDetail = detErr.message;
                     detalles = detData || [];
+                    console.log("[DEBUG Alquileres] Detalles cargados:", detalles.length, "pedIds solicitados:", pedIds.length, detalles);
                 }
                 
                 // Paso C: Ensamblar En Memoria y filtrar
