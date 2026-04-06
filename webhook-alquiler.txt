@@ -1,0 +1,89 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL')
+const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+const supabase = createClient(supabaseUrl, supabaseKey)
+
+Deno.serve(async (req) => {
+  const logResultado = async (msg, exito = false) => {
+    await supabase.from('logs_webhook').insert([{
+      payload: { url: req.url },
+      resultado: msg,
+      exito
+    }])
+    return new Response(msg, { status: 200 })
+  }
+
+  try {
+    const url = new URL(req.url)
+    let texto = url.searchParams.get('texto')
+
+    if (!texto) return logResultado('No se recibio texto', false)
+
+    const textoMin = texto.toLowerCase()
+
+    // Extraer monto (simple)
+    let montoLimpio = 0
+    const match = String(texto).match(/(\d+)/)
+    if (match) montoLimpio = parseFloat(match[0])
+
+    if (!montoLimpio) return logResultado('Monto no detectado', false)
+
+    // Buscar cliente
+    const { data: clientes } = await supabase.from('clientes').select('id, nombre')
+
+    const cliente = clientes?.find(c => {
+      const palabras = c.nombre.toLowerCase().trim().split(' ').filter(p => p.length > 2)
+      return palabras?.every(p => textoMin.includes(p))
+    })
+
+    if (!cliente) return logResultado('Cliente no identificado', false)
+
+    // Buscar dispenser
+    const { data: dispensers } = await supabase
+      .from('dispensers')
+      .select('id')
+      .eq('cliente_id', cliente.id)
+      .eq('estado', 'instalado')
+
+    if (!dispensers?.length) return logResultado('Sin dispenser', false)
+
+    // Verificar si ya pagado
+    const ahora = new Date()
+    const inicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString().split('T')[0]
+    const fin = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).toISOString().split('T')[0]
+
+    const { data: pagos } = await supabase
+      .from('operaciones')
+      .select('id')
+      .eq('entidad_referencia', cliente.id)
+      .eq('categoria', 'Alquiler Dispenser')
+      .gte('fecha', inicio)
+      .lte('fecha', fin)
+
+    if (pagos?.length) return logResultado('Ya pagado', false)
+
+    // Obtener user
+    const { data: userData } = await supabase.auth.getUser()
+    const userId = userData?.user?.id
+
+    if (!userId) return logResultado('Sin usuario', false)
+
+    // Registrar
+    await supabase.from('operaciones').insert([{
+      user_id: userId,
+      fecha: new Date().toISOString().split('T')[0],
+      tipo: 'ingreso',
+      categoria: 'Alquiler Dispenser',
+      monto: montoLimpio,
+      concepto: 'Alquiler - ' + cliente.nombre,
+      metodo_pago: 'transferencia',
+      entidad_referencia: cliente.id
+    }])
+
+    return logResultado('PAGO OK: ' + cliente.nombre, true)
+
+  } catch (err) {
+    return logResultado('Error: ' + err.message, false)
+  }
+})
