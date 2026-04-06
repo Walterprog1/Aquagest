@@ -22,14 +22,12 @@ Deno.serve(async (req) => {
 
     const textoMin = texto.toLowerCase()
 
-    // Extraer monto (simple)
     let montoLimpio = 0
     const match = String(texto).match(/(\d+)/)
     if (match) montoLimpio = parseFloat(match[0])
 
     if (!montoLimpio) return logResultado('Monto no detectado', false)
 
-    // Buscar cliente
     const { data: clientes } = await supabase.from('clientes').select('id, nombre')
 
     const cliente = clientes?.find(c => {
@@ -39,7 +37,6 @@ Deno.serve(async (req) => {
 
     if (!cliente) return logResultado('Cliente no identificado', false)
 
-    // Buscar dispenser
     const { data: dispensers } = await supabase
       .from('dispensers')
       .select('id')
@@ -48,7 +45,6 @@ Deno.serve(async (req) => {
 
     if (!dispensers?.length) return logResultado('Sin dispenser', false)
 
-    // Verificar si ya pagado
     const ahora = new Date()
     const inicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString().split('T')[0]
     const fin = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).toISOString().split('T')[0]
@@ -63,13 +59,11 @@ Deno.serve(async (req) => {
 
     if (pagos?.length) return logResultado('Ya pagado', false)
 
-    // Obtener user
     const { data: userData } = await supabase.auth.getUser()
     const userId = userData?.user?.id
 
     if (!userId) return logResultado('Sin usuario', false)
 
-    // Registrar
     await supabase.from('operaciones').insert([{
       user_id: userId,
       fecha: new Date().toISOString().split('T')[0],
