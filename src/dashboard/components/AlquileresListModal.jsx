@@ -39,13 +39,14 @@ const AlquileresListModal = ({ isOpen, onClose }) => {
             const maxDays = new Date(selectedYear, selectedMonth, 0).getDate();
             const finMes = `${selectedYear}-${mesStr}-${maxDays < 10 ? '0'+maxDays : maxDays}`;
             
-            // 3. Obtener operaciones "Alquiler Dispenser" del periodo
+            // 3. Obtener operaciones "Alquiler Dispenser" del periodo seleccionado
             let operaciones = [];
             const { data: opsData, error: opError } = await supabase
                 .from('operaciones')
                 .select('id, entidad_referencia, monto, fecha')
-                .ilike('categoria', '%Alquiler Dispenser%');
-                // IMPORTANTE: Quitamos filtros de fecha TEMPORALMENTE para validar de por vida
+                .ilike('categoria', '%Alquiler Dispenser%')
+                .gte('fecha', inicioMes)
+                .lte('fecha', finMes);
             
             if (opError) {
                 console.error("Error al buscar operaciones (Opcional):", opError);
