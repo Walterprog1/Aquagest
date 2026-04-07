@@ -236,9 +236,6 @@ const PedidosListModal = ({ isOpen, onClose, onOpenEditPedido }) => {
                                                 {o.estado?.toLowerCase() === 'pendiente' && (
                                                     <button onClick={() => confirmarEntrega(o.id)} style={{ padding: '4px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>Entregado 🚚</button>
                                                 )}
-                                                {o.pago_estado?.toLowerCase() === 'pendiente' && (
-                                                    <button onClick={() => confirmarPago(o.id)} style={{ padding: '4px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>Cobrado 💰</button>
-                                                )}
                                                 <button 
                                                     onClick={() => onOpenEditPedido(o)}
                                                     style={{ padding: '4px', backgroundColor: '#64748b', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}
