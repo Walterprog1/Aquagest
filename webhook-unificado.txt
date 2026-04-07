@@ -1,0 +1,135 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL')
+const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+const supabase = createClient(supabaseUrl, supabaseKey)
+
+Deno.serve(async (req) => {
+  let payload = {}
+
+  const logResultado = async (msg, exito = false) => {
+    await supabase.from('logs_webhook').insert([{
+      payload: { url: req.url },
+      resultado: msg,
+      exito
+    }])
+    return new Response(msg, { status: 200 })
+  }
+
+  try {
+    const url = new URL(req.url)
+    let texto = url.searchParams.get('texto')
+
+    if (!texto) {
+      try {
+        payload = await req.json()
+        texto = payload.texto
+      } catch (e) {}
+    }
+
+    if (!texto) return logResultado('No se recibio texto', false)
+
+    const textoMin = texto.toLowerCase()
+
+    // Extraer monto del texto tipo "Recibiste $ 25.000" o "Te transferiste $ 1.000"
+    // El formato argentino usa punto como separador de miles
+    let montoLimpio = 0
+    const match = texto.match(/\$(\d+(?:\.\d{3})*)/)
+    if (match) {
+      montoLimpio = parseInt(match[1].replace(/\./g, ''), 10)
+    }
+
+    if (!montoLimpio || montoLimpio < 100) return logResultado('Monto no detectado: ' + montoLimpio, false)
+
+    // Buscar cliente
+    const { data: clientes } = await supabase.from('clientes').select('id, nombre, user_id')
+
+    const cliente = clientes?.find(c => {
+      const palabras = c.nombre.toLowerCase().trim().split(' ').filter(p => p.length > 2)
+      return palabras?.every(p => textoMin.includes(p))
+    })
+
+    if (!cliente) return logResultado('Cliente no identificado', false)
+
+    // 1. Buscar pedido pendiente de bidones
+    const { data: pedidos } = await supabase
+      .from('pedidos')
+      .select('id, total')
+      .eq('cliente_id', cliente.id)
+      .eq('pago_estado', 'pendiente')
+      .order('created_at', { ascending: true })
+
+    let montoRestante = montoLimpio
+    let pagadoBidones = false
+
+    if (pedidos && pedidos.length > 0) {
+      const pedido = pedidos[0]
+      if (montoRestante >= pedido.total) {
+        await supabase.from('pedidos').update({ 
+          pago_estado: 'pagado',
+          notas: `Auto-Match: ${texto}`
+        }).eq('id', pedido.id)
+        
+        montoRestante = montoRestante - pedido.total
+        pagadoBidones = true
+      }
+    }
+
+    // 2. Si hay dispenser instalado y monto restante >= 25000, registrar alquiler
+    const { data: dispensers } = await supabase
+      .from('dispensers')
+      .select('id')
+      .eq('cliente_id', cliente.id)
+      .eq('estado', 'instalado')
+
+    let registradoAlquiler = false
+    
+    if (dispensers?.length && montoRestante >= 25000) {
+      // Verificar si ya hay alquiler pagado este mes
+      const ahora = new Date()
+      const inicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString().split('T')[0]
+      const fin = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).toISOString().split('T')[0]
+
+      const { data: pagosAlquiler } = await supabase
+        .from('operaciones')
+        .select('id')
+        .eq('entidad_referencia', cliente.id)
+        .eq('categoria', 'Alquiler Dispenser')
+        .gte('fecha', inicio)
+        .lte('fecha', fin)
+
+      if (!pagosAlquiler || pagosAlquiler.length === 0) {
+        await supabase.from('operaciones').insert([{
+          user_id: cliente.user_id,
+          fecha: new Date().toISOString().split('T')[0],
+          tipo: 'ingreso',
+          categoria: 'Alquiler Dispenser',
+          monto: 25000,
+          concepto: 'Alquiler - ' + cliente.nombre,
+          metodo_pago: 'transferencia',
+          entidad_referencia: cliente.id
+        }])
+        
+        montoRestante = montoRestante - 25000
+        registradoAlquiler = true
+      }
+    }
+
+    // Resumen
+    let resultado = ''
+    if (pagadoBidones && registradoAlquiler) {
+      resultado = `PAGO OK: Bidones + Alquiler (resto: $${montoRestante})`
+    } else if (pagadoBidones) {
+      resultado = `PAGO OK: Bidones (resto: $${montoRestante})`
+    } else if (registradoAlquiler) {
+      resultado = `PAGO OK: Alquiler (resto: $${montoRestante})`
+    } else {
+      resultado = `Monto insuficiente: $${montoLimpio}`
+    }
+
+    return logResultado(resultado, true)
+
+  } catch (err) {
+    return logResultado('Error: ' + err.message, false)
+  }
+})
