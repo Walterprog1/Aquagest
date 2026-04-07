@@ -1,0 +1,41 @@
+# Cómo retomar el trabajo
+
+## Pasos para la próxima sesión:
+
+1. **Abrir la terminal**
+
+2. **Navegar a la carpeta del proyecto:**
+   ```
+   cd C:\Proyectos\Soda Gestion\AquaGest
+   ```
+
+3. **Actualizar el código (descargar cambios):**
+   ```
+   git pull
+   ```
+
+4. **Leer el resumen de lo que hicimos:**
+   ```
+   type RESUMEN_SESION_07042026.md
+   ```
+
+5. **Listo** - Ya está todo actualizado y podés continuar.
+
+---
+
+## Archivos importantes:
+
+- `RESUMEN_SESION_07042026.md` - Resumen completo de la sesión
+- `webhook-pagos-v4.txt` - Último código del webhook de pagos
+
+---
+
+## Si hay errores:
+
+Si `git pull` da error, probá primero:
+```
+git fetch origin
+git reset --hard origin/main
+```
+
+Esto fuerza descargar todo el código desde cero.
