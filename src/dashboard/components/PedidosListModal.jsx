@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { supabase } from '../../lib/supabase';
 
-const PedidosListModal = ({ isOpen, onClose, onOpenEditPedido }) => {
+const PedidosListModal = ({ isOpen, onClose, onOpenEditPedido, onPedidoActualizado }) => {
     const [pedidos, setPedidos] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [filtroActivo, setFiltroActivo] = useState('Todos'); // 'Todos', 'Cobro Pendiente', 'Entrega Pendiente', 'Pagados'
@@ -32,6 +32,13 @@ const PedidosListModal = ({ isOpen, onClose, onOpenEditPedido }) => {
         if (isOpen) {
             cargarPedidos();
         }
+    }, [isOpen]);
+
+    // Auto-refresh every 10 seconds when modal is open
+    useEffect(() => {
+        if (!isOpen) return;
+        const interval = setInterval(cargarPedidos, 10000);
+        return () => clearInterval(interval);
     }, [isOpen]);
 
     const confirmarPago = async (orderId) => {
